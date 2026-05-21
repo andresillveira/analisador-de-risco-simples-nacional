@@ -5,7 +5,7 @@ import os
 # Adiciona o diretório backend ao PATH para poder importar app
 sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
-from app import clean_and_parse_float, calculate_risk, detect_report_type
+from app import clean_and_parse_float, calculate_risk, detect_report_type, calculate_risk_from_values
 
 class TestTaxCalculator(unittest.TestCase):
     
@@ -61,6 +61,53 @@ class TestTaxCalculator(unittest.TestCase):
             {"type": "Outras Despesas", "detectedTotal": 40000.0}
         ]
         res_ix = calculate_risk(files_ix)
+        self.assertEqual(res_ix["statusIX"], "Risco")
+        self.assertTrue(res_ix["incisoIXExceeded"])
+
+    def test_calculate_risk_from_values(self):
+        # Regular state
+        res = calculate_risk_from_values(
+            vendas=100000.0,
+            compras=50000.0,
+            servicos_prestados=0.0,
+            servicos_tomados=0.0,
+            folha_pagamento=10000.0,
+            outras_receitas=0.0,
+            outras_despesas=10000.0
+        )
+        self.assertEqual(res["faturamento"], 100000.0)
+        self.assertEqual(res["comprasContabilizadas"], 50000.0)
+        self.assertEqual(res["despesasContabilizadas"], 70000.0)
+        self.assertEqual(res["comprasPercentage"], 50.0)
+        self.assertEqual(res["despesasPercentage"], 70.0)
+        self.assertEqual(res["statusX"], "Regular")
+        self.assertEqual(res["statusIX"], "Regular")
+        self.assertFalse(res["incisoXExceeded"])
+        self.assertFalse(res["incisoIXExceeded"])
+
+        # Exceeded inciso X (Compras > 80% faturamento)
+        res_x = calculate_risk_from_values(
+            vendas=100000.0,
+            compras=85000.0,
+            servicos_prestados=0.0,
+            servicos_tomados=0.0,
+            folha_pagamento=0.0,
+            outras_receitas=0.0,
+            outras_despesas=0.0
+        )
+        self.assertEqual(res_x["statusX"], "Risco")
+        self.assertTrue(res_x["incisoXExceeded"])
+
+        # Exceeded inciso IX (Despesas > 120% faturamento)
+        res_ix = calculate_risk_from_values(
+            vendas=100000.0,
+            compras=50000.0,
+            servicos_prestados=0.0,
+            servicos_tomados=10000.0,
+            folha_pagamento=50000.0,
+            outras_receitas=0.0,
+            outras_despesas=20000.0
+        )
         self.assertEqual(res_ix["statusIX"], "Risco")
         self.assertTrue(res_ix["incisoIXExceeded"])
 

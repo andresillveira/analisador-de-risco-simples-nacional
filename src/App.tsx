@@ -24,7 +24,7 @@ import {
   UploadCloud
 } from "lucide-react";
 
-import { FileItem, CompanyInfo, AnalysisResults, AlertMessage, EMPTY_RESULTS, EMPTY_ALERTS, SimulationProfile } from "./types";
+import { FileItem, CompanyInfo, AnalysisResults, AlertMessage, EMPTY_RESULTS, EMPTY_ALERTS, SimulationProfile, ManualValues } from "./types";
 
 import ReportDropzone from "./components/ReportDropzone";
 import DashboardCards from "./components/DashboardCards";
@@ -32,6 +32,7 @@ import RiskAnalysisCards from "./components/RiskAnalysisCards";
 import AlertManager from "./components/AlertManager";
 import PrintReport from "./components/PrintReport";
 import AuditHistorySection from "./components/AuditHistorySection";
+import ManualValuesEditor from "./components/ManualValuesEditor";
 
 const areBreakdownsEqual = (b1?: any, b2?: any) => {
   if (!b1 && !b2) return true;
@@ -69,6 +70,12 @@ export default function App() {
   const [importResults, setImportResults] = useState<AnalysisResults>(EMPTY_RESULTS);
   const [importAlerts, setImportAlerts] = useState<AlertMessage[]>(EMPTY_ALERTS);
   const [isAnalyzingImport, setIsAnalyzingImport] = useState(false);
+
+  // === 3. MANUAL OVERRIDES STATE ===
+  const [currentManualValues, setCurrentManualValues] = useState<ManualValues | null>(null);
+  const [manualResults, setManualResults] = useState<AnalysisResults | null>(null);
+  const [manualAlerts, setManualAlerts] = useState<AlertMessage[] | null>(null);
+  const [isSavingManual, setIsSavingManual] = useState(false);
 
   // Heartbeat check on mount (Shared across backend connections)
   useEffect(() => {
@@ -399,14 +406,96 @@ export default function App() {
     setImportCompanyInfo(restoredCompany);
   };
 
+  // Load manual values from backend on company/period change
+  useEffect(() => {
+    let active = true;
+    if (activeTab !== "import") return;
+
+    const fetchManualValues = async () => {
+      try {
+        const company = importCompanyInfo.name;
+        const period = importCompanyInfo.period;
+        const res = await fetch(`/api/manual-values?company=${encodeURIComponent(company)}&period=${encodeURIComponent(period)}`);
+        if (res.ok && active) {
+          const data = await res.json();
+          if (data.manualValues && data.manualValues.is_manual) {
+            setCurrentManualValues(data.manualValues);
+            setManualResults(data.results);
+            setManualAlerts(data.alerts);
+          } else {
+            setCurrentManualValues(null);
+            setManualResults(null);
+            setManualAlerts(null);
+          }
+        }
+      } catch (err) {
+        console.error("Erro ao carregar valores manuais:", err);
+      }
+    };
+
+    fetchManualValues();
+    return () => {
+      active = false;
+    };
+  }, [importCompanyInfo.name, importCompanyInfo.period, activeTab]);
+
+  const handleSaveManualValues = async (values: ManualValues) => {
+    setIsSavingManual(true);
+    try {
+      const response = await fetch("/api/manual-values", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values)
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentManualValues(data.manualValues);
+        setManualResults(data.results);
+        setManualAlerts(data.alerts);
+      } else {
+        console.error("Erro ao salvar valores manuais");
+      }
+    } catch (err) {
+      console.error("Erro ao salvar valores manuais:", err);
+    } finally {
+      setIsSavingManual(false);
+    }
+  };
+
+  const handleResetManualValues = async () => {
+    setIsSavingManual(true);
+    try {
+      const company = importCompanyInfo.name;
+      const period = importCompanyInfo.period;
+      const response = await fetch(`/api/manual-values?company=${encodeURIComponent(company)}&period=${encodeURIComponent(period)}`, {
+        method: "DELETE"
+      });
+      if (response.ok) {
+        setCurrentManualValues(null);
+        setManualResults(null);
+        setManualAlerts(null);
+      } else {
+        console.error("Erro ao limpar valores manuais");
+      }
+    } catch (err) {
+      console.error("Erro ao limpar valores manuais:", err);
+    } finally {
+      setIsSavingManual(false);
+    }
+  };
+
   // Resolve current active data based on selected tab
   const activeCompanyInfo = activeTab === "simulations" ? simulationCompanyInfo : importCompanyInfo;
-  const activeResults = activeTab === "simulations" ? simulationResults : importResults;
+  const activeResults = activeTab === "simulations" 
+    ? simulationResults 
+    : (currentManualValues?.is_manual && manualResults ? manualResults : importResults);
   const activeFiles = activeTab === "simulations" ? simulationFiles : importFiles;
-  const activeAlerts = activeTab === "simulations" ? simulationAlerts : importAlerts;
-  const activeIsAnalyzing = activeTab === "simulations" ? isAnalyzingSimulation : isAnalyzingImport;
+  const activeAlerts = activeTab === "simulations" 
+    ? simulationAlerts 
+    : (currentManualValues?.is_manual && manualAlerts ? manualAlerts : importAlerts);
+  const activeIsAnalyzing = activeTab === "simulations" ? isAnalyzingSimulation : (isAnalyzingImport || isSavingManual);
 
-  const canExport = activeFiles.length > 0;
+  const canExport = activeFiles.length > 0 || !!(activeTab === "import" && currentManualValues?.is_manual);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
@@ -713,6 +802,17 @@ export default function App() {
                 onClearAll={handleClearAllImport}
               />
 
+              {/* COMPONENTE DE AJUSTES E VALORES MANUAIS */}
+              <ManualValuesEditor
+                companyName={importCompanyInfo.name}
+                period={importCompanyInfo.period}
+                importedFiles={importFiles}
+                currentManualValues={currentManualValues}
+                onSave={handleSaveManualValues}
+                onReset={handleResetManualValues}
+                isAnalyzing={isSavingManual}
+              />
+
               {/* HISTÓRICO DE AUDITORIAS E COMPARAÇÃO */}
               <AuditHistorySection
                 currentFiles={importFiles}
@@ -726,7 +826,7 @@ export default function App() {
             {/* MAIN DASHBOARD CONTENT AREA */}
             <main className="lg:col-span-8 space-y-6 col-span-12 lg:col-span-8">
               
-              {importFiles.length === 0 ? (
+              {importFiles.length === 0 && !currentManualValues?.is_manual ? (
                 /* GORGEOUS ONBOARDING/EMPTY STATE */
                 <div className="bg-white border border-slate-200 rounded-xl p-8 shadow-xs text-center space-y-6 flex flex-col items-center justify-center min-h-[500px]">
                   <div className="w-16 h-16 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-inner">
@@ -812,6 +912,8 @@ export default function App() {
                         <p className="text-[11px] text-slate-400 font-mono">
                           {isAnalyzingImport 
                             ? "Analisando com algoritmos Python/Pandas..." 
+                            : currentManualValues?.is_manual 
+                            ? "Ajustes manuais ativos (persistidos no backend)" 
                             : `Análise consolidada para ${importFiles.length} livro(s) fiscal(is) anexado(s)`}
                         </p>
                       </div>
@@ -829,13 +931,13 @@ export default function App() {
                   </div>
 
                   {/* SUMMARY STATISTICS CARDS */}
-                  <DashboardCards results={importResults} />
+                  <DashboardCards results={activeResults} />
 
                   {/* CRITERION INDIVIDUAL PROGRESS GAUGE */}
-                  <RiskAnalysisCards results={importResults} />
+                  <RiskAnalysisCards results={activeResults} />
 
                   {/* ALERTS SECTION */}
-                  <AlertManager alerts={importAlerts} />
+                  <AlertManager alerts={activeAlerts} />
 
                   {/* BRIEF ACCREDITATION LEGAL EXPLANATION */}
                   <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs space-y-2 text-slate-600">

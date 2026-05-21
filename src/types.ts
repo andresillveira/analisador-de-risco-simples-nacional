@@ -135,3 +135,16 @@ export const EMPTY_ALERTS: AlertMessage[] = [
     description: "Suba relatórios de faturamento, compras e despesas (CSV/TXT/Excel/PDF) no painel de upload para iniciar."
   }
 ];
+
+export interface ManualValues {
+  companyName: string;
+  period: string;
+  vendas: number;
+  compras: number;
+  servicos_prestados: number;
+  servicos_tomados: number;
+  folha_pagamento: number;
+  outras_receitas: number;
+  outras_despesas: number;
+  is_manual: boolean;
+}

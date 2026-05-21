@@ -154,10 +154,13 @@ def classify_cfop_row(cfop_code: str, val: float, report_type: str) -> Dict[str,
         tipo = info["tipo"]
         
         # 1. Serviços Prestados (CFOP 9.000 / Serviços sob Saída)
-        if category == "Serviços" and tipo == "Saída":
+        category_lower = category.lower()
+        is_servico = "servi" in category_lower
+        
+        if is_servico and tipo == "Saída":
             res["servicos"] = val
         # 2. Serviços Tomados (CFOP 8.000 / Serviços sob Entrada)
-        elif category == "Serviços" and tipo == "Entrada":
+        elif is_servico and tipo == "Entrada":
             res["outras"] = val
         # 3. Compras Comerciais
         elif category == "Compras":
@@ -589,10 +592,11 @@ def calculate_risk(files_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         "textVerdictIX": text_verdict_ix
     }
 
-def generate_alerts(files_data: List[Dict[str, Any]], results: Dict[str, Any]) -> List[Dict[str, str]]:
+
+def generate_alerts(files_data: List[Dict[str, Any]], results: Dict[str, Any], is_manual: bool = False) -> List[Dict[str, str]]:
     alerts = []
     
-    if len(files_data) == 0:
+    if len(files_data) == 0 and not is_manual:
         alerts.append({
             "id": "no-files",
             "type": "info",
@@ -605,7 +609,7 @@ def generate_alerts(files_data: List[Dict[str, Any]], results: Dict[str, Any]) -
         alerts.append({
             "id": "missing-folha",
             "type": "warning",
-            "message": "⚠️ Atenção: Relatório de Folha de Pagamentos não enviado",
+            "message": "⚠️ Atenção: Valores de Folha de Pagamentos não preenchidos" if is_manual else "⚠️ Atenção: Relatório de Folha de Pagamentos não enviado",
             "description": "A ausência de custos previdenciários e trabalhistas compromete a análise do Inciso IX (Despesas < 120%). O status continuará como 'Inconclusivo' até que os valores de salários e pró-labore sejam computados."
         })
         
@@ -613,15 +617,15 @@ def generate_alerts(files_data: List[Dict[str, Any]], results: Dict[str, Any]) -
         alerts.append({
             "id": "missing-compras",
             "type": "warning",
-            "message": "⚠️ Relatório de Compras ausente",
-            "description": "Adicione o relatório de aquisições para podermos computar o total de compras do período e validar a formula fiscal do Inciso X."
+            "message": "⚠️ Valores de Compras ausentes",
+            "description": "Adicione o total de aquisições para podermos computar o limite do Inciso X."
         })
         
     if not results["hasVendas"] and not results["hasServicos"]:
         alerts.append({
             "id": "missing-revenue",
             "type": "danger",
-            "message": "❌ Sem Relatório de Receita (Vendas/Serviços)",
+            "message": "❌ Sem Valores de Receita (Vendas/Serviços)",
             "description": "O faturamento do Simples Nacional é a base de cálculo de todo o Artigo 29. Sem receitas declaradas, qualquer despesa ou compra acarreta risco imediato de desenquadramento."
         })
         
@@ -641,7 +645,7 @@ def generate_alerts(files_data: List[Dict[str, Any]], results: Dict[str, Any]) -
             "description": f"Irregularidade Fiscal Crítica. Despesas pagas computadas representam {results['despesasPercentage']:.1f}% do faturamento, ultrapassando os 120%. A exclusão de ofício pode ser decidida pela Receita."
         })
         
-    if (len(files_data) > 0 and 
+    if ((len(files_data) > 0 or is_manual) and 
         not results["incisoXExceeded"] and 
         not results["incisoIXExceeded"] and 
         (results["hasVendas"] or results["hasServicos"]) and 
@@ -655,6 +659,92 @@ def generate_alerts(files_data: List[Dict[str, Any]], results: Dict[str, Any]) -
         })
         
     return alerts
+
+
+def calculate_risk_from_values(
+    vendas: float,
+    compras: float,
+    servicos_prestados: float,
+    servicos_tomados: float,
+    folha_pagamento: float,
+    outras_receitas: float,
+    outras_despesas: float
+) -> Dict[str, Any]:
+    # Calculate faturamento and despesas
+    faturamento = vendas + servicos_prestados + outras_receitas
+    despesas = compras + folha_pagamento + servicos_tomados + outras_despesas
+    
+    compras_percentage = (compras / faturamento) * 100 if faturamento > 0 else 0.0
+    inciso_x_exceeded = compras_percentage > 80
+    
+    despesas_percentage = (despesas / faturamento) * 100 if faturamento > 0 else 0.0
+    inciso_ix_exceeded = despesas_percentage > 120
+    
+    status_x = "Inconclusivo"
+    status_ix = "Inconclusivo"
+    
+    text_verdict_x = "Aguardando definição de faturamento (Vendas/Serviços/Outras Receitas) e compras."
+    text_verdict_ix = "Aguardando definição de faturamento, folha e despesas."
+    
+    has_vendas = vendas > 0
+    has_servicos = servicos_prestados > 0
+    has_compras = compras > 0
+    has_folha = folha_pagamento > 0
+    has_outras = (servicos_tomados + outras_despesas) > 0
+    
+    # Inciso X
+    if faturamento > 0 and has_compras:
+        if inciso_x_exceeded:
+            status_x = "Risco"
+            text_verdict_x = f"RISCO DE EXCLUSÃO DETECTADO! As compras representam {compras_percentage:.2f}% do faturamento, ultrapassando o teto de 80% do Art. 29, Inciso X, LC 123/2006."
+        else:
+            status_x = "Regular"
+            text_verdict_x = f"Regularidade Fiscal Sob o Art. 29. As compras de mercadorias representam {compras_percentage:.2f}% do faturamento tributável. Operação dentro do limite prudencial (80%)."
+    elif not has_compras and faturamento > 0:
+        status_x = "Inconclusivo"
+        text_verdict_x = "Compras zeradas ou não informadas. Não é possível calcular o limite do Inciso X."
+    elif has_compras and faturamento == 0:
+        status_x = "Risco"
+        text_verdict_x = "Brecha Gravíssima! Compras registradas sem nenhum faturamento correspondente no período."
+        
+    # Inciso IX
+    if faturamento > 0:
+        if inciso_ix_exceeded:
+            status_ix = "Risco"
+            text_verdict_ix = f"RISCO DE EXCLUSÃO DETECTADO! Despesas computadas somam {despesas_percentage:.2f}% do faturamento total, estourando o limite de 120% previsto no Art. 29, Inciso IX."
+        else:
+            if has_folha:
+                status_ix = "Regular"
+                text_verdict_ix = f"Regularidade Fiscal Sob o Art. 29. Despesas totais representam {despesas_percentage:.2f}% do faturamento total. Limite de 120% respeitado."
+            else:
+                status_ix = "Inconclusivo"
+                text_verdict_ix = f"Análise Parcial: Despesas conhecidas representam {despesas_percentage:.2f}% do faturamento. Falta informar Pró-labore e Folha de Pagamento para o cálculo oficial definitivo."
+    elif despesas > 0 and faturamento == 0:
+        status_ix = "Risco"
+        text_verdict_ix = "ALERTA CRÍTICO: Despesas declaradas sem nenhuma comprovação de receita declarada (Faturamento Zero)."
+        
+    return {
+        "faturamento": round(faturamento, 2),
+        "vendasContabilizadas": round(vendas, 2),
+        "servicosCfopContabilizados": round(servicos_prestados, 2),
+        "comprasContabilizadas": round(compras, 2),
+        "despesasContabilizadas": round(despesas, 2),
+        "folhaPagamentoContabilizada": round(folha_pagamento, 2),
+        "outrasDespesasContabilizadas": round(servicos_tomados + outras_despesas, 2),
+        "comprasPercentage": round(compras_percentage, 2),
+        "despesasPercentage": round(despesas_percentage, 2),
+        "incisoXExceeded": inciso_x_exceeded,
+        "incisoIXExceeded": inciso_ix_exceeded,
+        "hasFolha": has_folha,
+        "hasCompras": has_compras,
+        "hasVendas": has_vendas,
+        "hasServicos": has_servicos,
+        "statusX": status_x,
+        "statusIX": status_ix,
+        "textVerdictX": text_verdict_x,
+        "textVerdictIX": text_verdict_ix
+    }
+
 
 # ---------------------------------------------------------------------------
 # Pydantic Models
@@ -713,20 +803,36 @@ class AuditRecord(BaseModel):
     results: AnalysisResultsModel
     files: list[FileItemModel]
 
+
 class CompareRequest(BaseModel):
     audit_id_a: str
     audit_id_b: str
+
+class ManualValuesModel(BaseModel):
+    companyName: str
+    period: str
+    vendas: float = 0.0
+    compras: float = 0.0
+    servicos_prestados: float = 0.0
+    servicos_tomados: float = 0.0
+    folha_pagamento: float = 0.0
+    outras_receitas: float = 0.0
+    outras_despesas: float = 0.0
+    is_manual: bool = True
 
 # ---------------------------------------------------------------------------
 # History helpers (JSON file storage)
 # ---------------------------------------------------------------------------
 
 HISTORY_FILE = Path(__file__).parent / "data" / "history.json"
+MANUAL_VALUES_FILE = Path(__file__).parent / "data" / "manual_values.json"
 
 def _ensure_data_dir():
     HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
     if not HISTORY_FILE.exists():
         HISTORY_FILE.write_text("[]", encoding="utf-8")
+    if not MANUAL_VALUES_FILE.exists():
+        MANUAL_VALUES_FILE.write_text("{}", encoding="utf-8")
 
 def _load_history() -> list:
     _ensure_data_dir()
@@ -738,6 +844,18 @@ def _load_history() -> list:
 def _save_history(data: list):
     _ensure_data_dir()
     HISTORY_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+def _load_manual_values() -> dict:
+    _ensure_data_dir()
+    try:
+        return json.loads(MANUAL_VALUES_FILE.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, FileNotFoundError):
+        return {}
+
+def _save_manual_values(data: dict):
+    _ensure_data_dir()
+    MANUAL_VALUES_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
 
 # ---------------------------------------------------------------------------
 # Simulation Profiles
@@ -1065,6 +1183,85 @@ def compare_audits(req: CompareRequest):
             "riskChangeIX": res_a["statusIX"] != res_b["statusIX"]
         }
     }
+
+# --- Manual Values endpoints ---
+
+@app.get("/api/manual-values")
+def get_manual_values(company: str, period: str):
+    manual_data = _load_manual_values()
+    key = f"{company.strip().lower()}|||{period.strip().lower()}"
+    if key in manual_data:
+        model = manual_data[key]
+        results = calculate_risk_from_values(
+            vendas=model.get("vendas", 0.0),
+            compras=model.get("compras", 0.0),
+            servicos_prestados=model.get("servicos_prestados", 0.0),
+            servicos_tomados=model.get("servicos_tomados", 0.0),
+            folha_pagamento=model.get("folha_pagamento", 0.0),
+            outras_receitas=model.get("outras_receitas", 0.0),
+            outras_despesas=model.get("outras_despesas", 0.0)
+        )
+        alerts = generate_alerts([], results, is_manual=model.get("is_manual", False))
+        return {
+            "manualValues": model,
+            "results": results,
+            "alerts": alerts
+        }
+    
+    empty_model = {
+        "companyName": company,
+        "period": period,
+        "vendas": 0.0,
+        "compras": 0.0,
+        "servicos_prestados": 0.0,
+        "servicos_tomados": 0.0,
+        "folha_pagamento": 0.0,
+        "outras_receitas": 0.0,
+        "outras_despesas": 0.0,
+        "is_manual": False
+    }
+    results = calculate_risk_from_values(0, 0, 0, 0, 0, 0, 0)
+    alerts = generate_alerts([], results, is_manual=False)
+    return {
+        "manualValues": empty_model,
+        "results": results,
+        "alerts": alerts
+    }
+
+@app.post("/api/manual-values")
+def save_manual_values(model: ManualValuesModel):
+    manual_data = _load_manual_values()
+    key = f"{model.companyName.strip().lower()}|||{model.period.strip().lower()}"
+    
+    manual_data[key] = model.model_dump()
+    _save_manual_values(manual_data)
+    
+    results = calculate_risk_from_values(
+        vendas=model.vendas,
+        compras=model.compras,
+        servicos_prestados=model.servicos_prestados,
+        servicos_tomados=model.servicos_tomados,
+        folha_pagamento=model.folha_pagamento,
+        outras_receitas=model.outras_receitas,
+        outras_despesas=model.outras_despesas
+    )
+    alerts = generate_alerts([], results, is_manual=model.is_manual)
+    
+    return {
+        "results": results,
+        "alerts": alerts,
+        "manualValues": model.model_dump()
+    }
+
+@app.delete("/api/manual-values")
+def delete_manual_values(company: str, period: str):
+    manual_data = _load_manual_values()
+    key = f"{company.strip().lower()}|||{period.strip().lower()}"
+    if key in manual_data:
+        del manual_data[key]
+        _save_manual_values(manual_data)
+        return {"deleted": True}
+    return {"deleted": False}
 
 # --- Original analyze endpoint ---
 
