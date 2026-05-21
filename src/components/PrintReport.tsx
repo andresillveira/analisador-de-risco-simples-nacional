@@ -112,7 +112,7 @@ export default function PrintReport({
             <div className="border-b-2 border-blue-900 pb-5 mb-6 flex justify-between items-start">
               <div>
                 <span className="text-xs font-bold text-blue-900 tracking-widest uppercase block font-mono">
-                  SISTEMA DE EXCLUSÃO DE OFÍCIO S/A
+                  DEUSDEDIT CONTABILIDADE LTDA.
                 </span>
                 <h1 className="text-xl font-bold text-slate-900 tracking-tight">
                   Parecer de Conformidade Fiscal
@@ -135,7 +135,7 @@ export default function PrintReport({
             <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs mb-6 font-mono">
               <div>
                 <span className="text-slate-400 font-bold uppercase text-[9px] block">
-                  Contribuinte Acadêmico / Empresa sob Análise:
+                  Razão Social:
                 </span>
                 <span className="font-bold text-slate-800 text-sm">
                   {companyInfo.name || "NÃO INFORMADO"}
@@ -143,7 +143,7 @@ export default function PrintReport({
               </div>
               <div>
                 <span className="text-slate-400 font-bold uppercase text-[9px] block">
-                  Período dos Livros Fiscais Analisados:
+                  Período Analisado:
                 </span>
                 <span className="font-bold text-slate-800 text-sm">
                   {companyInfo.period || "NÃO INFORMADO"}
@@ -185,15 +185,15 @@ export default function PrintReport({
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-300">
-                    <th className="py-2.5 px-3">Rubrica Fiscal</th>
-                    <th className="py-2.5 px-3">Alineações Praticadas</th>
-                    <th className="py-2.5 px-3 text-right">Valor Computado (R$)</th>
+                    <th className="py-2.5 px-3">Tipo de Movimento</th>
+                    <th className="py-2.5 px-3">Observações</th>
+                    <th className="py-2.5 px-3 text-right">Valores Apurados (R$)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 font-mono">
                   <tr>
                     <td className="py-2 px-3 font-sans font-semibold">Total de Faturamento Bruto (Ingressos de Recursos)</td>
-                    <td className="py-2 px-3 text-slate-500 text-[10px]">Vendas + Serviços CFOP 9000 (Sem Devoluções/Remessas)</td>
+                    <td className="py-2 px-3 text-slate-500 text-[10px]">Vendas + Serviços Prestados</td>
                     <td className="py-2 px-3 text-right font-bold">{formatBRL(results.faturamento)}</td>
                   </tr>
                   <tr>
@@ -208,12 +208,12 @@ export default function PrintReport({
                   </tr>
                   <tr>
                     <td className="py-2 px-3 font-sans font-semibold text-slate-900">Aquisição de Mercadorias (Compras)</td>
-                    <td className="py-2 px-3 text-slate-500 text-[10px]">Industrialização/Revenda (Excluído Ativos e Frete)</td>
+                    <td className="py-2 px-3 text-slate-500 text-[10px]">Revenda/Industrialização (Excluído Uso, Consumo, Ativos e Fretes)</td>
                     <td className="py-2 px-3 text-right font-bold text-slate-900">{formatBRL(results.comprasContabilizadas)}</td>
                   </tr>
                   <tr>
                     <td className="py-2 px-3 font-sans font-semibold">Despesas Gerais Pagas do período</td>
-                    <td className="py-2 px-3 text-slate-500 text-[10px]">Soma de Compras + Folha + Custo Fixo</td>
+                    <td className="py-2 px-3 text-slate-500 text-[10px]">Soma de Compras + Folha + Outros Custos</td>
                     <td className="py-2 px-3 text-right font-bold">{formatBRL(results.despesasContabilizadas)}</td>
                   </tr>
                   <tr>
@@ -223,7 +223,7 @@ export default function PrintReport({
                   </tr>
                   <tr>
                     <td className="py-2 px-3 pl-6 font-sans">↳ Custos Administrativos Gerais</td>
-                    <td className="py-2 px-3 text-slate-400 text-[10px]">Luz, aluguel, internet e outros</td>
+                    <td className="py-2 px-3 text-slate-400 text-[10px]">Serviços tomados e outras despesas</td>
                     <td className="py-2 px-3 text-right text-slate-600">{formatBRL(results.outrasDespesasContabilizadas)}</td>
                   </tr>
                 </tbody>
@@ -312,12 +312,12 @@ export default function PrintReport({
               <div>
                 <div className="border-b border-slate-400 mx-10 h-10" />
                 <p className="font-bold text-slate-800 mt-2">Responsável Técnico (Contador/Auditor)</p>
-                <p className="text-[10px] text-slate-400 mt-0.5 font-mono">Assinatura Digital Auditada</p>
+                <p className="text-[10px] text-slate-400 mt-0.5 font-mono">Deusdedit Contabilidade LTDA</p>
               </div>
               <div>
                 <div className="border-b border-slate-400 mx-10 h-10" />
                 <p className="font-bold text-slate-800 mt-2">Representante Legal da Empresa</p>
-                <p className="text-[10px] text-slate-400 mt-0.5 font-mono">Autorização Interna Tributária</p>
+                <p className="text-[10px] text-slate-400 mt-0.5 font-mono">{companyInfo.name || "NÃO INFORMADO"}</p>
               </div>
             </div>
 
