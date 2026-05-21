@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    background-color: #f8fafc;
+    color: #0f172a;
+    font-family: var(--font-sans);
+  }
+}
+
+/* Custom prints layout for professional Simples Nacional audit report */
+@media print {
+  body {
+    background-color: white !important;
+    color: black !important;
+    font-size: 11pt !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+  
+  .print-page-break {
+    page-break-before: always;
+  }
+  
+  .print-shadow-none {
+    box-shadow: none !important;
+    border: 1px solid #cbd5e1 !important;
+  }
+
+  /* Reset modal styles for printing */
+  .print-modal-container {
+    position: static !important;
+    display: block !important;
+    background: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+  
+  .print-modal-card {
+    max-width: none !important;
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+  }
+  
+  .print-modal-content {
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: none !important;
+    width: 100% !important;
+  }
+  
+  #printable-area {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+}

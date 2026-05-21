@@ -1,0 +1,6 @@
+{
+  "name": "Analisador de Risco Simples Nacional",
+  "description": "Análise de Risco de Exclusão do Simples Nacional com base no Art. 29 da LC 123/2006 para contadores.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
