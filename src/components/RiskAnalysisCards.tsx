@@ -26,7 +26,7 @@ export default function RiskAnalysisCards({ results }: RiskAnalysisCardsProps) {
   const getProgressBarColorX = (pct: number) => {
     if (pct === 0) return "bg-slate-200";
     if (pct > 80) return "bg-red-600";
-    if (pct > 65) return "bg-amber-500"; // Caution zone
+    if (pct > 70) return "bg-amber-500"; // Caution zone (70%)
     return "bg-emerald-500";
   };
 
@@ -47,7 +47,7 @@ export default function RiskAnalysisCards({ results }: RiskAnalysisCardsProps) {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-4 mb-4">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-blue-600 uppercase bg-blue-50 px-2 py-0.5 rounded-sm">
+                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-sm">
                   Art. 29, Inciso X
                 </span>
                 <span className="text-xs text-slate-400 font-mono">LC 123/2006</span>
@@ -140,7 +140,7 @@ export default function RiskAnalysisCards({ results }: RiskAnalysisCardsProps) {
             </div>
             <div className="flex justify-between text-[10px] text-slate-400 font-mono mt-1">
               <span>0%</span>
-              <span>50% (Atenção)</span>
+              <span>70% (Atenção)</span>
               <span className="font-bold text-red-500">80% (Limite-Teto)</span>
               <span>100%+</span>
             </div>

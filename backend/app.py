@@ -792,7 +792,7 @@ SIMULATION_PROFILES = [
     },
     {
         "id": "risk-excess-purchases",
-        "title": "Caso 2: Exclusão Art. 29 Inciso X (Compras excessivas)",
+        "title": "Caso 2: Exclusão Art. 29, Inciso X (Compras excessivas)",
         "companyName": "Distribuidora de Alimentos Sul Ltda",
         "period": "Janeiro a Abril / 2026",
         "description": "Exemplo onde as compras de mercadorias ultrapassam 80% do faturamento total. Prática que deflagra presunção de omissão de receitas pela Receita Federal, acarretando exclusão.",
@@ -831,7 +831,7 @@ SIMULATION_PROFILES = [
     },
     {
         "id": "risk-excess-expenses",
-        "title": "Caso 3: Exclusão Art. 29 Inciso IX (Despesas > 120%)",
+        "title": "Caso 3: Exclusão Art. 29, Inciso IX (Despesas > 120%)",
         "companyName": "Clínica Odonto Saúde Integral S/S",
         "period": "1º Semestre de 2026",
         "description": "Situação em que as despesas totais (compras + folha + aluguéis/outros) somadas ultrapassam 120% do faturamento da empresa. Demonstra incapacidade operacional financeira declarada.",
@@ -913,7 +913,7 @@ def get_config():
         "thresholds": {
             "incisoX": 80,
             "incisoIX": 120,
-            "cautionX": 65,
+            "cautionX": 70,
             "cautionIX": 100
         },
         "legalReferences": {

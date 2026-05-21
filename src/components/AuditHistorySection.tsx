@@ -464,7 +464,7 @@ export default function AuditHistorySection({
             </div>
             {diffs.riskChangeX && (
               <div className="text-[9px] bg-amber-500/10 border border-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded text-center font-mono">
-                Alteração no status do Art. 29 Inciso X!
+                Alteração no status do Art. 29, Inciso X!
               </div>
             )}
           </div>
@@ -491,7 +491,7 @@ export default function AuditHistorySection({
             </div>
             {diffs.riskChangeIX && (
               <div className="text-[9px] bg-amber-500/10 border border-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded text-center font-mono">
-                Alteração no status do Art. 29 Inciso IX!
+                Alteração no status do Art. 29, Inciso IX!
               </div>
             )}
           </div>

@@ -234,7 +234,7 @@ export default function PrintReport({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
               
               <div className="p-4 rounded-xl border border-slate-200">
-                <span className="text-[10px] font-bold text-blue-900 font-mono block">INCISO X (REGRA DE COMPRAS 80%)</span>
+                <span className="text-[10px] font-bold text-blue-900 font-mono block">Inciso X (Regra de Compras 80%)</span>
                 <p className="text-[11px] text-slate-500 mt-1 mb-2 font-mono">
                   Fórmula: Compras / Fatur. = {results.comprasPercentage.toFixed(2)}%
                 </p>
@@ -257,7 +257,7 @@ export default function PrintReport({
               </div>
 
               <div className="p-4 rounded-xl border border-slate-200">
-                <span className="text-[10px] font-bold text-indigo-900 font-mono block">INCISO IX (REGRA DE DESPESAS 120%)</span>
+                <span className="text-[10px] font-bold text-indigo-900 font-mono block">Inciso IX (Regra de Despesas 120%)</span>
                 <p className="text-[11px] text-slate-500 mt-1 mb-2 font-mono">
                   Fórmula: Despesas / Fatur. = {results.despesasPercentage.toFixed(2)}%
                 </p>

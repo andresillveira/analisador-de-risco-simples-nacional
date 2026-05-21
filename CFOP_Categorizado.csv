@@ -578,5 +578,5 @@ CFOP;Tipo;Origem/Destino;Categoria;Descrição
 7.667;Saída;Para o Exterior;Vendas;Venda de combustível ou lubrificante a consumidor ou usuário final
 7.930;Saída;Para o Exterior;Devolução;Lançamento efetuado a título de devolução de bem cuja entrada tenha ocorrido sob amparo de regime especial aduaneiro de admissão temporária
 7.949;Saída;Para o Exterior;Outras;Outra saída de mercadoria ou prestação de serviço não especificado
-8.000;Entrada;Municipal;Serviços;Serviços Tomados tributados pelo ISSQN
-9.000;Saída;Municipal;Serviços;Serviços Prestados tributados pelo ISSQN
+8.000;Entrada;Municipal;Serviços Tomados;Serviços Tomados tributados pelo ISSQN
+9.000;Saída;Municipal;Serviços Prestados;Serviços Prestados tributados pelo ISSQN

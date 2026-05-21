@@ -424,7 +424,7 @@ export default function App() {
                 <span className="text-[9px] font-bold bg-blue-600/30 text-blue-300 px-1.5 py-0.5 rounded-sm uppercase tracking-wider font-mono border border-blue-500/20">
                   Art. 29 LC 123/2006
                 </span>
-                <span className="text-[10px] text-slate-400 font-mono">Conselho Regional de Contabilidade</span>
+                <span className="text-[10px] text-slate-400 font-mono">Deusdedit Contabilidade</span>
               </div>
               <h1 className="text-lg font-bold tracking-tight text-white leading-tight">
                 Analisador de Risco - Simples Nacional

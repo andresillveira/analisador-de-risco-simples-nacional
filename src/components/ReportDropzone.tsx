@@ -407,39 +407,39 @@ export default function ReportDropzone({ files, onFilesChange, onClearAll }: Rep
                 return (
                   <div
                     key={file.id}
-                    className="p-3.5 bg-slate-50/50 hover:bg-slate-50 border border-slate-200 rounded-xl transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    className="p-3.5 bg-slate-50/50 hover:bg-slate-50 border border-slate-200 rounded-xl transition-all flex flex-col gap-3"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="min-w-10 h-10 bg-white rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 text-xs">
+                      <div className="min-w-10 h-10 bg-white rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 text-xs shrink-0">
                         <FileText className="w-5 h-5 text-blue-600" />
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-semibold text-slate-700 text-sm font-mono break-all">
+                          <span className="font-semibold text-slate-700 text-xs font-mono break-all line-clamp-2">
                             {file.name}
                           </span>
-                          <span className="text-[10px] text-slate-400">
+                          <span className="text-[10px] text-slate-400 whitespace-nowrap">
                             ({Math.round(file.size / 100) / 10} KB)
                           </span>
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5 font-mono">
-                          Linhas: <span className="font-bold text-slate-700">{file.rowCount}</span> | Total Processado:{" "}
-                          <span className="font-bold text-emerald-600 bg-emerald-50/50 px-1 py-0.5 rounded">
+                          Linhas: <span className="font-bold text-slate-700">{file.rowCount}</span> | Total:{" "}
+                          <span className="font-bold text-emerald-600 bg-emerald-50/50 px-1 py-0.5 rounded whitespace-nowrap">
                             {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(file.detectedTotal)}
                           </span>
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      <div className="flex flex-col items-end sm:items-end">
-                        <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1 block">
-                          Categoria Operacional:
+                    <div className="flex items-center justify-between gap-3 pt-2.5 border-t border-slate-200/60">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider whitespace-nowrap">
+                          Cat:
                         </span>
                         <select
                           value={file.type}
                           onChange={(e) => changeFileType(file.id, e.target.value as ReportType)}
-                          className="text-xs font-medium bg-white border border-slate-200 text-slate-700 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          className="text-xs font-medium bg-white border border-slate-200 text-slate-700 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-500 w-full max-w-[160px] truncate"
                         >
                           {reportTypeKeys.map((typeOpt) => (
                             <option key={typeOpt} value={typeOpt}>
@@ -451,10 +451,10 @@ export default function ReportDropzone({ files, onFilesChange, onClearAll }: Rep
 
                       <button
                         onClick={() => removeFile(file.id)}
-                        className="p-2 text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 rounded-lg hover:border-red-200 transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-red-600 bg-white hover:bg-red-50 border border-slate-200 rounded-lg hover:border-red-200 transition-colors shrink-0 cursor-pointer"
                         title="Delete file"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
