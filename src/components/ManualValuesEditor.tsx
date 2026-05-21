@@ -101,30 +101,68 @@ export default function ManualValuesEditor({
     let aggVendas = 0;
     let aggCompras = 0;
     let aggServicosPrestados = 0;
-    let aggServicosTomados = 0; // Services are treated either as prestados or tomados based on CFOP
+    let aggServicosTomados = 0;
     let aggFolha = 0;
     let aggOutrasReceitas = 0;
     let aggOutrasDespesas = 0;
 
     importedFiles.forEach(f => {
-      if (f.breakdown) {
+      const isServiceFile = 
+        f.type === "Serviços" || 
+        f.name.toLowerCase().includes("servi") || 
+        f.name.toLowerCase().includes("iss") || 
+        f.name.toLowerCase().includes("nfse");
+      
+      const isEntrada = 
+        f.name.toLowerCase().includes("entr") || 
+        f.name.toLowerCase().includes("toma");
+
+      // Check if breakdown exists and has at least one positive value
+      const breakdownSum = f.breakdown
+        ? (f.breakdown.compras ?? 0) +
+          (f.breakdown.vendas ?? 0) +
+          (f.breakdown.servicos ?? 0) +
+          (f.breakdown.outras ?? 0) +
+          (f.breakdown.folha ?? 0)
+        : 0;
+      
+      const hasValidBreakdown = f.breakdown && breakdownSum > 0.01;
+
+      if (hasValidBreakdown && f.breakdown) {
         aggCompras += f.breakdown.compras ?? 0;
         aggVendas += f.breakdown.vendas ?? 0;
         aggServicosPrestados += f.breakdown.servicos ?? 0;
-        aggOutrasDespesas += f.breakdown.outras ?? 0;
+        
+        // If it's a services file (like an ISS report or a file explicitly mapped to services),
+        // breakdown.outras (CFOP 8.000) represents Serviços Tomados.
+        // Otherwise, it represents Outras Despesas.
+        if (isServiceFile) {
+          aggServicosTomados += f.breakdown.outras ?? 0;
+        } else {
+          aggOutrasDespesas += f.breakdown.outras ?? 0;
+        }
+        
         aggFolha += f.breakdown.folha ?? 0;
       } else {
         const total = f.detectedTotal ?? 0;
         if (f.type === "Vendas") {
           aggVendas += total;
         } else if (f.type === "Serviços") {
-          aggServicosPrestados += total;
+          if (isEntrada) {
+            aggServicosTomados += total;
+          } else {
+            aggServicosPrestados += total;
+          }
         } else if (f.type === "Compras") {
           aggCompras += total;
         } else if (f.type === "Folha de Pagamento") {
           aggFolha += total;
         } else if (f.type === "Outras Despesas") {
-          aggOutrasDespesas += total;
+          if (isServiceFile) {
+            aggServicosTomados += total;
+          } else {
+            aggOutrasDespesas += total;
+          }
         }
       }
     });

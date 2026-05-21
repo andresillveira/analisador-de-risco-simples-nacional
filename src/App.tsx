@@ -170,7 +170,7 @@ export default function App() {
         const configs = simulationFiles.map(f => ({
           id: f.id,
           name: f.name,
-          type: f.type
+          type: f.isTypeManuallySelected ? f.type : undefined
         }));
         formData.append("file_configs", JSON.stringify(configs));
         
@@ -202,24 +202,56 @@ export default function App() {
           
           let hasChanges = false;
           const updatedFiles = simulationFiles.map(f => {
-            const matching = data.files.find((pf: any) => pf.id === f.id || pf.name === f.name);
-            if (matching) {
-              const breakdownChanged = !areBreakdownsEqual(f.breakdown, matching.breakdown);
-              const totalChanged = Math.abs((f.detectedTotal ?? 0) - (matching.detectedTotal ?? 0)) > 0.01;
-              const rowCountChanged = f.rowCount !== matching.rowCount;
-              const contentChanged = f.content !== matching.content && 
-                (matching.content?.startsWith("PLANILHA EXCEL") || matching.content?.startsWith("DOCUMENTO PDF"));
-              const processedChanged = !f.processedByBackend;
+            const matches = data.files.filter((pf: any) => 
+              pf.id === f.id || 
+              pf.name === f.name || 
+              (pf.name && f.name && pf.name.toLowerCase().includes(f.name.toLowerCase()))
+            );
+            
+            if (matches.length > 0) {
+              let totalRowCount = 0;
+              let totalDetected = 0;
+              const aggBreakdown = { compras: 0, vendas: 0, servicos: 0, outras: 0, folha: 0 };
+              let matchedContent = "";
+              let detectedType = f.type;
+              const isManual = f.isTypeManuallySelected;
               
-              if (rowCountChanged || totalChanged || breakdownChanged || contentChanged || processedChanged) {
+              matches.forEach((pf: any) => {
+                totalRowCount += pf.rowCount ?? 0;
+                totalDetected += pf.detectedTotal ?? 0;
+                if (pf.content) {
+                  matchedContent += (matchedContent ? "\n\n" : "") + pf.content;
+                }
+                if (pf.breakdown) {
+                  aggBreakdown.compras += pf.breakdown.compras ?? 0;
+                  aggBreakdown.vendas += pf.breakdown.vendas ?? 0;
+                  aggBreakdown.servicos += pf.breakdown.servicos ?? 0;
+                  aggBreakdown.outras += pf.breakdown.outras ?? 0;
+                  aggBreakdown.folha += pf.breakdown.folha ?? 0;
+                }
+                if (pf.type && !isManual) {
+                  detectedType = pf.type;
+                }
+              });
+
+              const breakdownChanged = !areBreakdownsEqual(f.breakdown, aggBreakdown);
+              const totalChanged = Math.abs((f.detectedTotal ?? 0) - totalDetected) > 0.01;
+              const rowCountChanged = f.rowCount !== totalRowCount;
+              const contentChanged = f.content !== matchedContent;
+              const processedChanged = !f.processedByBackend;
+              const typeChanged = f.type !== detectedType;
+              
+              if (rowCountChanged || totalChanged || breakdownChanged || contentChanged || processedChanged || typeChanged) {
                 hasChanges = true;
                 return {
                   ...f,
-                  rowCount: matching.rowCount,
-                  detectedTotal: matching.detectedTotal,
-                  content: matching.content,
-                  breakdown: matching.breakdown,
-                  processedByBackend: true
+                  type: detectedType,
+                  rowCount: totalRowCount,
+                  detectedTotal: totalDetected,
+                  content: matchedContent,
+                  breakdown: aggBreakdown,
+                  processedByBackend: true,
+                  isTypeManuallySelected: f.isTypeManuallySelected
                 };
               }
             } else {
@@ -294,7 +326,7 @@ export default function App() {
         const configs = importFiles.map(f => ({
           id: f.id,
           name: f.name,
-          type: f.type
+          type: f.isTypeManuallySelected ? f.type : undefined
         }));
         formData.append("file_configs", JSON.stringify(configs));
         
@@ -326,24 +358,56 @@ export default function App() {
           
           let hasChanges = false;
           const updatedFiles = importFiles.map(f => {
-            const matching = data.files.find((pf: any) => pf.id === f.id || pf.name === f.name);
-            if (matching) {
-              const breakdownChanged = !areBreakdownsEqual(f.breakdown, matching.breakdown);
-              const totalChanged = Math.abs((f.detectedTotal ?? 0) - (matching.detectedTotal ?? 0)) > 0.01;
-              const rowCountChanged = f.rowCount !== matching.rowCount;
-              const contentChanged = f.content !== matching.content && 
-                (matching.content?.startsWith("PLANILHA EXCEL") || matching.content?.startsWith("DOCUMENTO PDF"));
-              const processedChanged = !f.processedByBackend;
+            const matches = data.files.filter((pf: any) => 
+              pf.id === f.id || 
+              pf.name === f.name || 
+              (pf.name && f.name && pf.name.toLowerCase().includes(f.name.toLowerCase()))
+            );
+            
+            if (matches.length > 0) {
+              let totalRowCount = 0;
+              let totalDetected = 0;
+              const aggBreakdown = { compras: 0, vendas: 0, servicos: 0, outras: 0, folha: 0 };
+              let matchedContent = "";
+              let detectedType = f.type;
+              const isManual = f.isTypeManuallySelected;
               
-              if (rowCountChanged || totalChanged || breakdownChanged || contentChanged || processedChanged) {
+              matches.forEach((pf: any) => {
+                totalRowCount += pf.rowCount ?? 0;
+                totalDetected += pf.detectedTotal ?? 0;
+                if (pf.content) {
+                  matchedContent += (matchedContent ? "\n\n" : "") + pf.content;
+                }
+                if (pf.breakdown) {
+                  aggBreakdown.compras += pf.breakdown.compras ?? 0;
+                  aggBreakdown.vendas += pf.breakdown.vendas ?? 0;
+                  aggBreakdown.servicos += pf.breakdown.servicos ?? 0;
+                  aggBreakdown.outras += pf.breakdown.outras ?? 0;
+                  aggBreakdown.folha += pf.breakdown.folha ?? 0;
+                }
+                if (pf.type && !isManual) {
+                  detectedType = pf.type;
+                }
+              });
+
+              const breakdownChanged = !areBreakdownsEqual(f.breakdown, aggBreakdown);
+              const totalChanged = Math.abs((f.detectedTotal ?? 0) - totalDetected) > 0.01;
+              const rowCountChanged = f.rowCount !== totalRowCount;
+              const contentChanged = f.content !== matchedContent;
+              const processedChanged = !f.processedByBackend;
+              const typeChanged = f.type !== detectedType;
+              
+              if (rowCountChanged || totalChanged || breakdownChanged || contentChanged || processedChanged || typeChanged) {
                 hasChanges = true;
                 return {
                   ...f,
-                  rowCount: matching.rowCount,
-                  detectedTotal: matching.detectedTotal,
-                  content: matching.content,
-                  breakdown: matching.breakdown,
-                  processedByBackend: true
+                  type: detectedType,
+                  rowCount: totalRowCount,
+                  detectedTotal: totalDetected,
+                  content: matchedContent,
+                  breakdown: aggBreakdown,
+                  processedByBackend: true,
+                  isTypeManuallySelected: f.isTypeManuallySelected
                 };
               }
             } else {

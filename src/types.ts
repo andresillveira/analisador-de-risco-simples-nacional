@@ -15,6 +15,7 @@ export interface FileItem {
   detectedTotal: number;
   fileObject?: File;
   processedByBackend?: boolean;
+  isTypeManuallySelected?: boolean;
   breakdown?: {
     compras: number;
     vendas: number;

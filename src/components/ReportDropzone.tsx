@@ -169,6 +169,7 @@ export default function ReportDropzone({ files, onFilesChange, onClearAll }: Rep
         return { 
           ...f, 
           type: newType,
+          isTypeManuallySelected: true,
           processedByBackend: false // Trigger re-analysis with new type
         };
       }
