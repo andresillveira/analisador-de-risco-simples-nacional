@@ -13,6 +13,8 @@ interface PrintReportProps {
   results: AnalysisResults;
   files: FileItem[];
   alerts: AlertMessage[];
+  analyzeScenario1?: boolean;
+  analyzeScenario2?: boolean;
 }
 
 export default function PrintReport({
@@ -21,7 +23,9 @@ export default function PrintReport({
   companyInfo,
   results,
   files,
-  alerts
+  alerts,
+  analyzeScenario1 = true,
+  analyzeScenario2 = true
 }: PrintReportProps) {
   if (!isOpen) return null;
 
@@ -49,8 +53,13 @@ export default function PrintReport({
 
   // Veredict determination for print
   const getVerdictBadge = () => {
-    const hasRisk = results.statusX === "Risco" || results.statusIX === "Risco";
-    const isIncomplete = results.statusX === "Inconclusivo" || results.statusIX === "Inconclusivo";
+    const checkX = analyzeScenario1 && results.statusX === "Risco";
+    const checkIX = analyzeScenario2 && results.statusIX === "Risco";
+    const hasRisk = checkX || checkIX;
+    
+    const checkInconclusivoX = analyzeScenario1 && results.statusX === "Inconclusivo";
+    const checkInconclusivoIX = analyzeScenario2 && results.statusIX === "Inconclusivo";
+    const isIncomplete = checkInconclusivoX || checkInconclusivoIX;
     
     if (hasRisk) {
       return {
@@ -154,9 +163,9 @@ export default function PrintReport({
             {/* Executive Status Indicator Panel */}
             <div className={`mt-4 border-2 p-5 rounded-2xl mb-8 flex flex-col sm:flex-row items-center sm:items-start gap-4 ${verdict.colorClass}`}>
               <div className="mt-1">
-                {results.statusX === "Risco" || results.statusIX === "Risco" ? (
+                {(analyzeScenario1 && results.statusX === "Risco") || (analyzeScenario2 && results.statusIX === "Risco") ? (
                   <AlertTriangle className="w-10 h-10 text-red-600" />
-                ) : results.statusX === "Inconclusivo" || results.statusIX === "Inconclusivo" ? (
+                ) : (analyzeScenario1 && results.statusX === "Inconclusivo") || (analyzeScenario2 && results.statusIX === "Inconclusivo") ? (
                   <AlertTriangle className="w-10 h-10 text-amber-500" />
                 ) : (
                   <CheckCircle2 className="w-10 h-10 text-emerald-600" />
@@ -238,53 +247,57 @@ export default function PrintReport({
             </div>
 
             {/* Test Framework Evaluations Art 29 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className={`grid gap-6 mb-6 ${analyzeScenario1 && analyzeScenario2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
               
-              <div className="p-4 rounded-xl border border-slate-200">
-                <span className="text-[10px] font-bold text-blue-900 font-mono block">Inciso X (Regra de Compras 80%)</span>
-                <p className="text-[11px] text-slate-500 mt-1 mb-2 font-mono">
-                  Fórmula: Compras / Fatur. = {results.comprasPercentage.toFixed(2)}%
-                </p>
-                <div className="flex justify-between items-center text-xs font-semibold">
-                  <span>Limite Máximo:</span>
-                  <span className="font-mono text-slate-700">80,00%</span>
+              {analyzeScenario1 && (
+                <div className="p-4 rounded-xl border border-slate-200">
+                  <span className="text-[10px] font-bold text-blue-900 font-mono block">Inciso X (Regra de Compras 80%)</span>
+                  <p className="text-[11px] text-slate-500 mt-1 mb-2 font-mono">
+                    Fórmula: Compras / Fatur. = {results.comprasPercentage.toFixed(2)}%
+                  </p>
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span>Limite Máximo:</span>
+                    <span className="font-mono text-slate-700">80,00%</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-semibold mt-1">
+                    <span>Atingido pela Empresa:</span>
+                    <span className={`font-mono ${results.incisoXExceeded ? "text-red-650" : "text-emerald-650"}`}>
+                      {results.comprasPercentage.toFixed(2)}%
+                    </span>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 text-xs font-bold font-mono">
+                    Resultado:{" "}
+                    <span className={results.statusX === "Risco" ? "text-red-600" : results.statusX === "Regular" ? "text-emerald-600" : "text-amber-500"}>
+                      {results.statusX === "Risco" ? "Risco de Exclusão" : results.statusX === "Regular" ? "Adequado (Regular)" : "Inconclusivo"}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center text-xs font-semibold mt-1">
-                  <span>Atingido pela Empresa:</span>
-                  <span className={`font-mono ${results.incisoXExceeded ? "text-red-650" : "text-emerald-650"}`}>
-                    {results.comprasPercentage.toFixed(2)}%
-                  </span>
-                </div>
-                <div className="mt-3 pt-2.5 border-t border-slate-100 text-xs font-bold font-mono">
-                  Resultado:{" "}
-                  <span className={results.statusX === "Risco" ? "text-red-600" : results.statusX === "Regular" ? "text-emerald-600" : "text-amber-500"}>
-                    {results.statusX === "Risco" ? "Risco de Exclusão" : results.statusX === "Regular" ? "Adequado (Regular)" : "Inconclusivo"}
-                  </span>
-                </div>
-              </div>
+              )}
 
-              <div className="p-4 rounded-xl border border-slate-200">
-                <span className="text-[10px] font-bold text-indigo-900 font-mono block">Inciso IX (Regra de Despesas 120%)</span>
-                <p className="text-[11px] text-slate-500 mt-1 mb-2 font-mono">
-                  Fórmula: Despesas / Fatur. = {results.despesasPercentage.toFixed(2)}%
-                </p>
-                <div className="flex justify-between items-center text-xs font-semibold">
-                  <span>Limite Máximo:</span>
-                  <span className="font-mono text-slate-700">120,00%</span>
+              {analyzeScenario2 && (
+                <div className="p-4 rounded-xl border border-slate-200">
+                  <span className="text-[10px] font-bold text-indigo-900 font-mono block">Inciso IX (Regra de Despesas 120%)</span>
+                  <p className="text-[11px] text-slate-500 mt-1 mb-2 font-mono">
+                    Fórmula: Despesas / Fatur. = {results.despesasPercentage.toFixed(2)}%
+                  </p>
+                  <div className="flex justify-between items-center text-xs font-semibold">
+                    <span>Limite Máximo:</span>
+                    <span className="font-mono text-slate-700">120,00%</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-semibold mt-1">
+                    <span>Atingido pela Empresa:</span>
+                    <span className={`font-mono ${results.incisoIXExceeded ? "text-red-655" : "text-emerald-655"}`}>
+                      {results.despesasPercentage.toFixed(2)}%
+                    </span>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 text-xs font-bold font-mono">
+                    Resultado:{" "}
+                    <span className={results.statusIX === "Risco" ? "text-red-600" : results.statusIX === "Regular" ? "text-emerald-600" : "text-amber-500"}>
+                      {results.statusIX === "Risco" ? "Risco de Exclusão" : results.statusIX === "Regular" ? "Adequado (Regular)" : "Inconclusivo"}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex justify-between items-center text-xs font-semibold mt-1">
-                  <span>Atingido pela Empresa:</span>
-                  <span className={`font-mono ${results.incisoIXExceeded ? "text-red-650" : "text-emerald-650"}`}>
-                    {results.despesasPercentage.toFixed(2)}%
-                  </span>
-                </div>
-                <div className="mt-3 pt-2.5 border-t border-slate-100 text-xs font-bold font-mono">
-                  Resultado:{" "}
-                  <span className={results.statusIX === "Risco" ? "text-red-600" : results.statusIX === "Regular" ? "text-emerald-600" : "text-amber-500"}>
-                    {results.statusIX === "Risco" ? "Risco de Exclusão" : results.statusIX === "Regular" ? "Adequado (Regular)" : "Inconclusivo"}
-                  </span>
-                </div>
-              </div>
+              )}
 
             </div>
 

@@ -9,3 +9,8 @@ coverage/
 .venv/
 scratch/
 exemples/
+
+# Scripts de automação local
+iniciar.bat
+encerrar.bat
+
