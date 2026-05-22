@@ -578,6 +578,7 @@ def calculate_risk(files_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         "despesasContabilizadas": round(despesas, 2),
         "folhaPagamentoContabilizada": round(folha, 2),
         "outrasDespesasContabilizadas": round(outras, 2),
+        "outrasReceitasContabilizadas": 0.0,
         "comprasPercentage": round(compras_percentage, 2),
         "despesasPercentage": round(despesas_percentage, 2),
         "incisoXExceeded": inciso_x_exceeded,
@@ -731,6 +732,7 @@ def calculate_risk_from_values(
         "despesasContabilizadas": round(despesas, 2),
         "folhaPagamentoContabilizada": round(folha_pagamento, 2),
         "outrasDespesasContabilizadas": round(servicos_tomados + outras_despesas, 2),
+        "outrasReceitasContabilizadas": round(outras_receitas, 2),
         "comprasPercentage": round(compras_percentage, 2),
         "despesasPercentage": round(despesas_percentage, 2),
         "incisoXExceeded": inciso_x_exceeded,
@@ -776,6 +778,7 @@ class AnalysisResultsModel(BaseModel):
     despesasContabilizadas: float = 0.0
     folhaPagamentoContabilizada: float = 0.0
     outrasDespesasContabilizadas: float = 0.0
+    outrasReceitasContabilizadas: float = 0.0
     comprasPercentage: float = 0.0
     despesasPercentage: float = 0.0
     incisoXExceeded: bool = False
@@ -1385,4 +1388,4 @@ async def analyze_files(
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run(app, host="127.0.0.1", port=8000)

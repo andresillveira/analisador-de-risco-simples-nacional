@@ -1,11 +1,22 @@
 import unittest
+import importlib.util
 import sys
 import os
 
-# Adiciona o diretório backend ao PATH para poder importar app
-sys.path.append(os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
+# Adiciona o diretório backend ao PATH
+backend_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+sys.path.insert(0, backend_dir)
 
-from app import clean_and_parse_float, calculate_risk, detect_report_type, calculate_risk_from_values
+# Importa o arquivo app.py diretamente para evitar colisão com o pacote modular 'app'
+spec = importlib.util.spec_from_file_location("app_monolithic", os.path.join(backend_dir, "app.py"))
+app_monolithic = importlib.util.module_from_spec(spec)
+sys.modules["app_monolithic"] = app_monolithic
+spec.loader.exec_module(app_monolithic)
+
+clean_and_parse_float = app_monolithic.clean_and_parse_float
+calculate_risk = app_monolithic.calculate_risk
+detect_report_type = app_monolithic.detect_report_type
+calculate_risk_from_values = app_monolithic.calculate_risk_from_values
 
 class TestTaxCalculator(unittest.TestCase):
     

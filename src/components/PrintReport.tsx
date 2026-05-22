@@ -206,6 +206,13 @@ export default function PrintReport({
                     <td className="py-2 px-3 text-slate-400 text-[10px]">Registro Municipal de NFS-e</td>
                     <td className="py-2 px-3 text-right text-slate-600">{formatBRL(results.servicosCfopContabilizados)}</td>
                   </tr>
+                  {results.outrasReceitasContabilizadas > 0 && (
+                    <tr>
+                      <td className="py-2 px-3 pl-6 font-sans">↳ Outras Receitas</td>
+                      <td className="py-2 px-3 text-slate-400 text-[10px]">Ajustes/Receitas Financeiras/Não-Operacionais</td>
+                      <td className="py-2 px-3 text-right text-slate-600">{formatBRL(results.outrasReceitasContabilizadas)}</td>
+                    </tr>
+                  )}
                   <tr>
                     <td className="py-2 px-3 font-sans font-semibold text-slate-900">Aquisição de Mercadorias (Compras)</td>
                     <td className="py-2 px-3 text-slate-500 text-[10px]">Revenda/Industrialização (Excluído Uso, Consumo, Ativos e Fretes)</td>

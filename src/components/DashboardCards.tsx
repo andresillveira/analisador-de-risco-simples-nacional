@@ -44,8 +44,11 @@ export default function DashboardCards({ results }: DashboardCardsProps) {
             </span>
           </p>
           
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono text-slate-400">
+          <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap gap-x-4 gap-y-1 items-center justify-between text-[11px] font-mono text-slate-400">
             <span>Vendas: {formatBRL(results.vendasContabilizadas)}</span>
+            {results.outrasReceitasContabilizadas > 0 && (
+              <span>Outras: {formatBRL(results.outrasReceitasContabilizadas)}</span>
+            )}
             <span>Serviços: {formatBRL(results.servicosCfopContabilizados)}</span>
           </div>
         </div>

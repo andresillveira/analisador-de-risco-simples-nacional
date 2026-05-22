@@ -38,6 +38,7 @@ export interface AnalysisResults {
   despesasContabilizadas: number;
   folhaPagamentoContabilizada: number;
   outrasDespesasContabilizadas: number;
+  outrasReceitasContabilizadas: number;
   
   comprasPercentage: number;
   despesasPercentage: number;
@@ -113,6 +114,7 @@ export const EMPTY_RESULTS: AnalysisResults = {
   despesasContabilizadas: 0,
   folhaPagamentoContabilizada: 0,
   outrasDespesasContabilizadas: 0,
+  outrasReceitasContabilizadas: 0,
   comprasPercentage: 0,
   despesasPercentage: 0,
   incisoXExceeded: false,

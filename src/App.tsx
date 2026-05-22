@@ -881,7 +881,7 @@ export default function App() {
               <AuditHistorySection
                 currentFiles={importFiles}
                 currentCompany={importCompanyInfo}
-                currentResults={importResults}
+                currentResults={activeResults}
                 onRestoreAudit={handleRestoreAudit}
               />
 
