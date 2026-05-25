@@ -194,7 +194,66 @@ def classify_cfop_row(cfop_code: str, val: float, report_type: str) -> Dict[str,
     return res
 
 
+def extract_company_name_from_text(content: str) -> Optional[str]:
+    if not content:
+        return None
+    lines = content.splitlines()
+    # Limitar busca às primeiras 3 linhas para evitar falsos positivos nos dados
+    for line in lines[:3]:
+        line_stripped = line.strip()
+        if not line_stripped:
+            continue
+        
+        # Obter a primeira célula (separando por delimitadores comuns)
+        parts = []
+        if ";" in line_stripped:
+            parts = [p.strip() for p in line_stripped.split(";")]
+        elif "," in line_stripped and line_stripped.count(",") > 3:
+            parts = [p.strip() for p in line_stripped.split(",")]
+        elif "|" in line_stripped:
+            parts = [p.strip() for p in line_stripped.split("|")]
+        elif "\t" in line_stripped:
+            parts = [p.strip() for p in line_stripped.split("\t")]
+        else:
+            parts = [line_stripped]
+            
+        first_cell = parts[0] if parts else ""
+        first_cell = first_cell.strip('"\' ')
+        
+        # Remover prefixo numérico (ex: "0513-AGROBORGES" -> "AGROBORGES")
+        # Captura de 3 a 6 dígitos seguidos opcionalmente por traço/espaços
+        cleaned = re.sub(r'^\d{3,6}\s*[-–]?\s*', '', first_cell)
+        cleaned = cleaned.strip('"\' ')
+        
+        # Normalizar espaços múltiplos
+        cleaned = re.sub(r'\s+', ' ', cleaned)
+        
+        if not cleaned or len(cleaned) < 3:
+            continue
+            
+        # O nome da empresa deve conter letras
+        if not re.search(r'[a-zA-ZáéíóúâêôãõçÁÉÍÓÚÂÊÔÃÕÇ]', cleaned):
+            continue
+            
+        lower_cleaned = cleaned.lower()
+        
+        # Filtro de palavras-chave que representam cabeçalhos ou dados, não nomes
+        exclude_words = [
+            "natureza", "contrato", "totais", "relatorio", "relatório", 
+            "cnpj", "período", "competência", "vlr contábil", "contábil",
+            "valor", "soma", "total", "subtotal", "empresa", "razão social",
+            "razao social", "per calc", "competencia", "relatorio", "relatório"
+        ]
+        
+        if any(w in lower_cleaned for w in exclude_words):
+            continue
+            
+        return cleaned
+    return None
+
+
 def parse_csv_txt(content: str, report_type: str, payroll_base: str = "custo_func") -> Dict[str, Any]:
+    company_name = extract_company_name_from_text(content)
     lines = content.splitlines()
     total = 0.0
     valid_rows = 0
@@ -329,7 +388,7 @@ def parse_csv_txt(content: str, report_type: str, payroll_base: str = "custo_fun
         total = total_val
         breakdown["folha"] = total
         
-        return {"total": round(total, 2), "rowCount": valid_rows, "breakdown": {k: round(v, 2) for k, v in breakdown.items()}}
+        return {"total": round(total, 2), "rowCount": valid_rows, "breakdown": {k: round(v, 2) for k, v in breakdown.items()}, "company_name": company_name}
         
     # 2. General Fiscal reports (ICMS, ISS, Outras Despesas)
     # First, let's scan for a header column named "vlr contabil", "vlr cont", "valor contabil", etc.
@@ -432,7 +491,7 @@ def parse_csv_txt(content: str, report_type: str, payroll_base: str = "custo_fun
             total += val
             valid_rows += 1
             
-    return {"total": round(total, 2), "rowCount": valid_rows, "breakdown": {k: round(v, 2) for k, v in breakdown.items()}}
+    return {"total": round(total, 2), "rowCount": valid_rows, "breakdown": {k: round(v, 2) for k, v in breakdown.items()}, "company_name": company_name}
 
 def parse_excel(content_bytes: bytes, report_type: str, payroll_base: str = "custo_func") -> Dict[str, Any]:
     try:
@@ -1187,7 +1246,8 @@ async def reanalyze_file(
         "rowCount": parsed["rowCount"],
         "detectedTotal": parsed["total"],
         "processedByBackend": True,
-        "breakdown": parsed.get("breakdown", {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0})
+        "breakdown": parsed.get("breakdown", {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0}),
+        "companyName": parsed.get("company_name")
     }
 
 # --- History endpoints ---
@@ -1433,7 +1493,8 @@ async def analyze_files(
                     "content": split_content,
                     "rowCount": parsed["rowCount"],
                     "detectedTotal": parsed["total"],
-                    "breakdown": parsed.get("breakdown", {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0})
+                    "breakdown": parsed.get("breakdown", {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0}),
+                    "companyName": parsed.get("company_name")
                 })
         else:
             # Standard single file
@@ -1470,17 +1531,27 @@ async def analyze_files(
                 "content": text_repr,
                 "rowCount": parsed["rowCount"],
                 "detectedTotal": parsed["total"],
-                "breakdown": parsed.get("breakdown", {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0})
+                "breakdown": parsed.get("breakdown", {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0}),
+                "companyName": parsed.get("company_name")
             })
             
     # Calculate global indicators and alerts
     results = calculate_risk(processed_files)
     alerts = generate_alerts(processed_files, results)
     
+    # Agregar os nomes de empresa detectados e selecionar o mais completo (mais longo)
+    company_names = [f.get("companyName") for f in processed_files if f.get("companyName")]
+    detected_company_name = None
+    if company_names:
+        unique_names = list(set(company_names))
+        unique_names.sort(key=len, reverse=True)
+        detected_company_name = unique_names[0]
+        
     return {
         "files": processed_files,
         "results": results,
-        "alerts": alerts
+        "alerts": alerts,
+        "detectedCompanyName": detected_company_name
     }
 
 if __name__ == "__main__":

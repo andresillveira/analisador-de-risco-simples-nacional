@@ -70,6 +70,7 @@ export default function App() {
   const [importResults, setImportResults] = useState<AnalysisResults>(EMPTY_RESULTS);
   const [importAlerts, setImportAlerts] = useState<AlertMessage[]>(EMPTY_ALERTS);
   const [isAnalyzingImport, setIsAnalyzingImport] = useState(false);
+  const [isNameAutoCaptured, setIsNameAutoCaptured] = useState(false);
 
   // === 3. MANUAL OVERRIDES STATE ===
   const [currentManualValues, setCurrentManualValues] = useState<ManualValues | null>(null);
@@ -371,6 +372,11 @@ export default function App() {
           setImportResults(data.results);
           setImportAlerts(data.alerts);
           
+          if (data.detectedCompanyName && (importCompanyInfo.name === "Nova Empresa S/A" || !importCompanyInfo.name.trim())) {
+            setImportCompanyInfo(prev => ({ ...prev, name: data.detectedCompanyName }));
+            setIsNameAutoCaptured(true);
+          }
+          
           let hasChanges = false;
           const updatedFiles = importFiles.map(f => {
             const matches = data.files.filter((pf: any) => 
@@ -477,6 +483,8 @@ export default function App() {
 
   const handleClearAllImport = () => {
     setImportFiles([]);
+    setImportCompanyInfo(prev => ({ ...prev, name: "Nova Empresa S/A" }));
+    setIsNameAutoCaptured(false);
   };
 
   const handleRestoreAudit = (restoredFiles: FileItem[], restoredCompany: CompanyInfo) => {
@@ -954,11 +962,20 @@ export default function App() {
                         id="import-company-name"
                         type="text"
                         value={importCompanyInfo.name}
-                        onChange={(e) => setImportCompanyInfo({ ...importCompanyInfo, name: e.target.value })}
+                        onChange={(e) => {
+                          setImportCompanyInfo({ ...importCompanyInfo, name: e.target.value });
+                          setIsNameAutoCaptured(false);
+                        }}
                         placeholder="Nome da Empresa"
                         className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-md pl-8 pr-2.5 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white transition-all font-mono"
                       />
                     </div>
+                    {isNameAutoCaptured && (
+                      <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-emerald-600 font-bold bg-emerald-50 border border-emerald-200 rounded px-2 py-0.5 w-fit font-mono shadow-xs animate-pulse">
+                        <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Nome capturado automaticamente!</span>
+                      </div>
+                    )}
                   </div>
 
                   <div>

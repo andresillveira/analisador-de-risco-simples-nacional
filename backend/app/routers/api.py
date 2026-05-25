@@ -107,7 +107,8 @@ async def reanalyze_file(
         "detectedTotal": parsed["total"],
         "processedByBackend": True,
         "isTypeManuallySelected": False,
-        "breakdown": parsed.get("breakdown", {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0})
+        "breakdown": parsed.get("breakdown", {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0}),
+        "companyName": parsed.get("company_name")
     }
 
 # --- History endpoints ---
@@ -352,7 +353,8 @@ async def analyze_files(
                     "detectedTotal": parsed["total"],
                     "processedByBackend": True,
                     "isTypeManuallySelected": split_is_manually_selected,
-                    "breakdown": parsed.get("breakdown", {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0})
+                    "breakdown": parsed.get("breakdown", {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0}),
+                    "companyName": parsed.get("company_name")
                 })
         else:
             if not report_type:
@@ -388,14 +390,24 @@ async def analyze_files(
                 "detectedTotal": parsed["total"],
                 "processedByBackend": True,
                 "isTypeManuallySelected": is_type_manually_selected,
-                "breakdown": parsed.get("breakdown", {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0})
+                "breakdown": parsed.get("breakdown", {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0}),
+                "companyName": parsed.get("company_name")
             })
             
     results = calculate_risk(processed_files)
     alerts = generate_alerts(processed_files, results)
     
+    # Agregar os nomes de empresa detectados e selecionar o mais completo (mais longo)
+    company_names = [f.get("companyName") for f in processed_files if f.get("companyName")]
+    detected_company_name = None
+    if company_names:
+        unique_names = list(set(company_names))
+        unique_names.sort(key=len, reverse=True)
+        detected_company_name = unique_names[0]
+        
     return {
         "files": processed_files,
         "results": results,
-        "alerts": alerts
+        "alerts": alerts,
+        "detectedCompanyName": detected_company_name
     }

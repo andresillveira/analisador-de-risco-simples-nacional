@@ -1,9 +1,66 @@
 import io
 import re
 import csv
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import pandas as pd
 from pypdf import PdfReader
+
+def extract_company_name_from_text(content: str) -> Optional[str]:
+    if not content:
+        return None
+    lines = content.splitlines()
+    # Limitar busca às primeiras 3 linhas para evitar falsos positivos nos dados
+    for line in lines[:3]:
+        line_stripped = line.strip()
+        if not line_stripped:
+            continue
+        
+        # Obter a primeira célula (separando por delimitadores comuns)
+        parts = []
+        if ";" in line_stripped:
+            parts = [p.strip() for p in line_stripped.split(";")]
+        elif "," in line_stripped and line_stripped.count(",") > 3:
+            parts = [p.strip() for p in line_stripped.split(",")]
+        elif "|" in line_stripped:
+            parts = [p.strip() for p in line_stripped.split("|")]
+        elif "\t" in line_stripped:
+            parts = [p.strip() for p in line_stripped.split("\t")]
+        else:
+            parts = [line_stripped]
+            
+        first_cell = parts[0] if parts else ""
+        first_cell = first_cell.strip('"\' ')
+        
+        # Remover prefixo numérico (ex: "0513-AGROBORGES" -> "AGROBORGES")
+        # Captura de 3 a 6 dígitos seguidos opcionalmente por traço/espaços
+        cleaned = re.sub(r'^\d{3,6}\s*[-–]?\s*', '', first_cell)
+        cleaned = cleaned.strip('"\' ')
+        
+        # Normalizar espaços múltiplos
+        cleaned = re.sub(r'\s+', ' ', cleaned)
+        
+        if not cleaned or len(cleaned) < 3:
+            continue
+            
+        # O nome da empresa deve conter letras
+        if not re.search(r'[a-zA-ZáéíóúâêôãõçÁÉÍÓÚÂÊÔÃÕÇ]', cleaned):
+            continue
+            
+        lower_cleaned = cleaned.lower()
+        
+        # Filtro de palavras-chave que representam cabeçalhos ou dados, não nomes
+        exclude_words = [
+            "natureza", "contrato", "totais", "relatorio", "relatório", 
+            "cnpj", "período", "competência", "vlr contábil", "contábil",
+            "valor", "soma", "total", "subtotal", "empresa", "razão social",
+            "razao social", "per calc", "competencia", "relatorio", "relatório"
+        ]
+        
+        if any(w in lower_cleaned for w in exclude_words):
+            continue
+            
+        return cleaned
+    return None
 
 from app.config import CFOP_MAP
 from app.utils.text_utils import clean_and_parse_float, split_csv_line, extract_and_normalize_cfop
@@ -11,6 +68,7 @@ from app.utils.text_utils import clean_and_parse_float, split_csv_line, extract_
 def parse_csv_txt(content: str, report_type: str, payroll_base: str = "custo_func") -> Dict[str, Any]:
     from app.services.risk_service import classify_cfop_row  # Import here to avoid circular imports if any
     
+    company_name = extract_company_name_from_text(content)
     lines = content.splitlines()
     total = 0.0
     valid_rows = 0
@@ -136,7 +194,7 @@ def parse_csv_txt(content: str, report_type: str, payroll_base: str = "custo_fun
         total = total_val
         breakdown["folha"] = total
         
-        return {"total": round(total, 2), "rowCount": valid_rows, "breakdown": {k: round(v, 2) for k, v in breakdown.items()}}
+        return {"total": round(total, 2), "rowCount": valid_rows, "breakdown": {k: round(v, 2) for k, v in breakdown.items()}, "company_name": company_name}
         
     # 2. General Fiscal reports (ICMS, ISS, Outras Despesas)
     target_column_index = -1
@@ -228,7 +286,7 @@ def parse_csv_txt(content: str, report_type: str, payroll_base: str = "custo_fun
             total += val
             valid_rows += 1
             
-    return {"total": round(total, 2), "rowCount": valid_rows, "breakdown": {k: round(v, 2) for k, v in breakdown.items()}}
+    return {"total": round(total, 2), "rowCount": valid_rows, "breakdown": {k: round(v, 2) for k, v in breakdown.items()}, "company_name": company_name}
 
 def parse_excel(content_bytes: bytes, report_type: str, payroll_base: str = "custo_func") -> Dict[str, Any]:
     try:
