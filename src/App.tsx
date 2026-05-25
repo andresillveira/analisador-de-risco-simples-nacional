@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Building2, 
   Calendar, 
@@ -85,6 +85,10 @@ export default function App() {
   // === 5. PAYROLL CALCULATION BASE STATE ===
   const [payrollCalculationBase, setPayrollCalculationBase] = useState<"custo_func" | "sal_hrs_faltas" | "sal_base">("custo_func");
 
+  // Signatures for tracking file changes and preventing infinite analysis loops
+  const lastSimulationSignatureRef = useRef<string>("");
+  const lastImportSignatureRef = useRef<string>("");
+
   const handlePayrollBaseChange = (base: "custo_func" | "sal_hrs_faltas" | "sal_base") => {
     setPayrollCalculationBase(base);
     setSimulationFiles(prev => prev.map(f => ({ ...f, processedByBackend: false })));
@@ -161,8 +165,11 @@ export default function App() {
   useEffect(() => {
     let active = true;
     
+    const currentSignature = simulationFiles.map(f => `${f.id}-${f.type}-${f.processedByBackend}`).join(',');
     const needsBackendAnalysis = simulationFiles.some(f => !f.processedByBackend);
-    if (!needsBackendAnalysis && simulationFiles.length > 0) {
+    const signatureChanged = currentSignature !== lastSimulationSignatureRef.current;
+
+    if (!needsBackendAnalysis && !signatureChanged && simulationFiles.length > 0) {
       return;
     }
     
@@ -171,6 +178,7 @@ export default function App() {
         if (active) {
           setSimulationResults(EMPTY_RESULTS);
           setSimulationAlerts(EMPTY_ALERTS);
+          lastSimulationSignatureRef.current = "";
         }
         return;
       }
@@ -278,6 +286,9 @@ export default function App() {
             return f;
           });
           
+          const updatedSignature = updatedFiles.map(f => `${f.id}-${f.type}-${f.processedByBackend}`).join(',');
+          lastSimulationSignatureRef.current = updatedSignature;
+
           if (hasChanges) {
             setSimulationFiles(updatedFiles);
           }
@@ -299,6 +310,8 @@ export default function App() {
           
           // Mark all simulation files as processed to avoid infinite loop when offline
           const updated = simulationFiles.map(f => f.processedByBackend ? f : { ...f, processedByBackend: true });
+          const updatedSignature = updated.map(f => `${f.id}-${f.type}-${f.processedByBackend}`).join(',');
+          lastSimulationSignatureRef.current = updatedSignature;
           setSimulationFiles(updated);
         }
       } finally {
@@ -318,8 +331,11 @@ export default function App() {
   useEffect(() => {
     let active = true;
     
+    const currentSignature = importFiles.map(f => `${f.id}-${f.type}-${f.processedByBackend}`).join(',');
     const needsBackendAnalysis = importFiles.some(f => !f.processedByBackend);
-    if (!needsBackendAnalysis && importFiles.length > 0) {
+    const signatureChanged = currentSignature !== lastImportSignatureRef.current;
+
+    if (!needsBackendAnalysis && !signatureChanged && importFiles.length > 0) {
       return;
     }
     
@@ -328,6 +344,7 @@ export default function App() {
         if (active) {
           setImportResults(EMPTY_RESULTS);
           setImportAlerts(EMPTY_ALERTS);
+          lastImportSignatureRef.current = "";
         }
         return;
       }
@@ -440,6 +457,9 @@ export default function App() {
             return f;
           });
           
+          const updatedSignature = updatedFiles.map(f => `${f.id}-${f.type}-${f.processedByBackend}`).join(',');
+          lastImportSignatureRef.current = updatedSignature;
+
           if (hasChanges) {
             setImportFiles(updatedFiles);
           }
@@ -461,6 +481,8 @@ export default function App() {
           
           // Mark all import files as processed to avoid infinite loop when offline
           const updated = importFiles.map(f => f.processedByBackend ? f : { ...f, processedByBackend: true });
+          const updatedSignature = updated.map(f => `${f.id}-${f.type}-${f.processedByBackend}`).join(',');
+          lastImportSignatureRef.current = updatedSignature;
           setImportFiles(updated);
         }
       } finally {
@@ -479,6 +501,11 @@ export default function App() {
   // Custom Import Callbacks
   const handleImportFilesChange = (updatedFiles: FileItem[]) => {
     setImportFiles(updatedFiles);
+  };
+
+  const handleManualReanalyze = () => {
+    lastImportSignatureRef.current = "";
+    setImportFiles(prev => prev.map(f => ({ ...f, processedByBackend: false })));
   };
 
   const handleClearAllImport = () => {
@@ -1121,15 +1148,28 @@ export default function App() {
                       </div>
                     </div>
                     
-                    <button
-                      type="button"
-                      onClick={() => setIsPrintModalOpen(true)}
-                      disabled={!canExport}
-                      className="w-full sm:w-auto px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider shadow-md bg-blue-600 hover:bg-blue-500 text-white cursor-pointer hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Printer className="w-4 h-4 text-white" />
-                      Exportar Relatório PDF
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                      <button
+                        type="button"
+                        onClick={handleManualReanalyze}
+                        disabled={isAnalyzingImport || importFiles.length === 0}
+                        className="w-full sm:w-auto px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider shadow-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 hover:border-slate-600 cursor-pointer hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Reexecuta a auditoria completa de todos os relatórios importados"
+                      >
+                        <RefreshCw className={`w-4 h-4 text-slate-400 ${isAnalyzingImport ? "animate-spin" : ""}`} />
+                        Fazer Análise
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsPrintModalOpen(true)}
+                        disabled={!canExport}
+                        className="w-full sm:w-auto px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider shadow-md bg-blue-600 hover:bg-blue-500 text-white cursor-pointer hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Printer className="w-4 h-4 text-white" />
+                        Exportar Relatório PDF
+                      </button>
+                    </div>
                   </div>
 
                   {/* SCENARIO SELECTOR CONTROL PANEL */}
