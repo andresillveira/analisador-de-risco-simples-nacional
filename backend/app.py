@@ -550,6 +550,16 @@ def split_combined_file(file_name: str, content: str) -> List[Dict[str, Any]]:
         
     saidas_line_index = -1
     saidas_regex = re.compile(r'- s[a-zãáí\ufffd\u00e1\u00ed\u00e3]+das', re.I)
+    entradas_regex = re.compile(r'- entr', re.I)
+    
+    first_split_index = -1
+    for i, line in enumerate(lines):
+        if entradas_regex.search(line) or saidas_regex.search(line):
+            first_split_index = i
+            break
+            
+    header_lines = lines[:first_split_index] if first_split_index != -1 else []
+    
     for i, line in enumerate(lines):
         if saidas_regex.search(line):
             saidas_line_index = i
@@ -562,7 +572,7 @@ def split_combined_file(file_name: str, content: str) -> List[Dict[str, Any]]:
     saidas_lines = lines[saidas_line_index:]
     
     entradas_content = "\n".join(entradas_lines)
-    saidas_content = "\n".join(saidas_lines)
+    saidas_content = "\n".join(header_lines + saidas_lines)
     is_iss = "iss" in content.lower()
     
     return [
