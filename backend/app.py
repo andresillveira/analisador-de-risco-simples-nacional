@@ -776,7 +776,7 @@ def generate_alerts(files_data: List[Dict[str, Any]], results: Dict[str, Any], i
             "description": "Adicione o total de aquisições para podermos computar o limite do Inciso X."
         })
         
-    if not results["hasVendas"] and not results["hasServicos"]:
+    if not results["hasVendas"] and not results["hasServicos"] and results.get("outrasReceitasContabilizadas", 0.0) == 0.0:
         alerts.append({
             "id": "missing-revenue",
             "type": "danger",
@@ -803,7 +803,7 @@ def generate_alerts(files_data: List[Dict[str, Any]], results: Dict[str, Any], i
     if ((len(files_data) > 0 or is_manual) and 
         not results["incisoXExceeded"] and 
         not results["incisoIXExceeded"] and 
-        (results["hasVendas"] or results["hasServicos"]) and 
+        (results["hasVendas"] or results["hasServicos"] or results.get("outrasReceitasContabilizadas", 0.0) > 0.0) and 
         results["hasCompras"] and 
         results["hasFolha"]):
         alerts.append({
