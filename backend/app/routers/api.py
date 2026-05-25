@@ -73,17 +73,18 @@ async def detect_type(file: UploadFile = File(...)):
 @router.post("/reanalyze-file")
 async def reanalyze_file(
     file: UploadFile = File(...),
-    report_type: str = Form(...)
+    report_type: str = Form(...),
+    payroll_base: str = Form("custo_func")
 ):
     content_bytes = await file.read()
     filename = file.filename
     file_size = len(content_bytes)
 
     if filename.lower().endswith(".xlsx"):
-        parsed = parse_excel(content_bytes, report_type)
+        parsed = parse_excel(content_bytes, report_type, payroll_base)
         text_repr = f"PLANILHA EXCEL PARSADA: {parsed['rowCount']} linhas."
     elif filename.lower().endswith(".pdf"):
-        parsed = parse_pdf(content_bytes, report_type)
+        parsed = parse_pdf(content_bytes, report_type, payroll_base)
         text_repr = f"DOCUMENTO PDF PARSADO: {parsed['rowCount']} linhas."
     else:
         try:
@@ -93,7 +94,7 @@ async def reanalyze_file(
                 sample_text = content_bytes.decode("cp1252")
             except Exception:
                 sample_text = content_bytes.decode("utf-8", errors="ignore")
-        parsed = parse_csv_txt(sample_text, report_type)
+        parsed = parse_csv_txt(sample_text, report_type, payroll_base)
         text_repr = sample_text
 
     return {
@@ -286,7 +287,8 @@ def delete_manual_values(company: str, period: str):
 @router.post("/analyze")
 async def analyze_files(
     files: List[UploadFile] = File(...),
-    file_configs: Optional[str] = Form(None)
+    file_configs: Optional[str] = Form(None),
+    payroll_base: str = Form("custo_func")
 ):
     configs = []
     if file_configs:
@@ -338,7 +340,7 @@ async def analyze_files(
                 final_split_type = conf_split.get("type", split_type)
                 split_is_manually_selected = conf_split.get("isTypeManuallySelected", False)
                 
-                parsed = parse_csv_txt(split_content, final_split_type)
+                parsed = parse_csv_txt(split_content, final_split_type, payroll_base)
                 
                 processed_files.append({
                     "id": split_id,
@@ -367,13 +369,13 @@ async def analyze_files(
                 report_type = detect_report_type(filename, detect_sample)
                 
             if filename.lower().endswith('.xlsx'):
-                parsed = parse_excel(content_bytes, report_type)
+                parsed = parse_excel(content_bytes, report_type, payroll_base)
                 text_repr = f"PLANILHA EXCEL PARSADA: {parsed['rowCount']} linhas."
             elif filename.lower().endswith('.pdf'):
-                parsed = parse_pdf(content_bytes, report_type)
+                parsed = parse_pdf(content_bytes, report_type, payroll_base)
                 text_repr = f"DOCUMENTO PDF PARSADO: {parsed['rowCount']} linhas."
             else:
-                parsed = parse_csv_txt(sample_text, report_type)
+                parsed = parse_csv_txt(sample_text, report_type, payroll_base)
                 text_repr = sample_text
                 
             processed_files.append({

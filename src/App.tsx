@@ -81,6 +81,15 @@ export default function App() {
   const [analyzeScenario1, setAnalyzeScenario1] = useState(true);
   const [analyzeScenario2, setAnalyzeScenario2] = useState(true);
 
+  // === 5. PAYROLL CALCULATION BASE STATE ===
+  const [payrollCalculationBase, setPayrollCalculationBase] = useState<"custo_func" | "sal_hrs_faltas" | "sal_base">("custo_func");
+
+  const handlePayrollBaseChange = (base: "custo_func" | "sal_hrs_faltas" | "sal_base") => {
+    setPayrollCalculationBase(base);
+    setSimulationFiles(prev => prev.map(f => ({ ...f, processedByBackend: false })));
+    setImportFiles(prev => prev.map(f => ({ ...f, processedByBackend: false })));
+  };
+
   // Heartbeat check on mount (Shared across backend connections)
   useEffect(() => {
     let active = true;
@@ -177,6 +186,7 @@ export default function App() {
           type: f.isTypeManuallySelected ? f.type : undefined
         }));
         formData.append("file_configs", JSON.stringify(configs));
+        formData.append("payroll_base", payrollCalculationBase);
         
         simulationFiles.forEach(f => {
           let fileToUpload: File;
@@ -333,6 +343,7 @@ export default function App() {
           type: f.isTypeManuallySelected ? f.type : undefined
         }));
         formData.append("file_configs", JSON.stringify(configs));
+        formData.append("payroll_base", payrollCalculationBase);
         
         importFiles.forEach(f => {
           let fileToUpload: File;
@@ -834,6 +845,21 @@ export default function App() {
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1.5 px-3 bg-slate-50 text-slate-700 shadow-2xs hover:bg-slate-100/55 transition-all">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">
+                      Base da Folha:
+                    </span>
+                    <select
+                      value={payrollCalculationBase}
+                      onChange={(e) => handlePayrollBaseChange(e.target.value as any)}
+                      className="text-xs font-bold text-slate-700 bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer p-0 pr-1"
+                    >
+                      <option value="custo_func">Custo Func (Recomendado)</option>
+                      <option value="sal_hrs_faltas">Sal - Hrs Faltas</option>
+                      <option value="sal_base">Sal. Base</option>
+                    </select>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -843,7 +869,7 @@ export default function App() {
                     className={`px-3 py-2 rounded-lg text-xs font-semibold border flex items-center gap-2 transition-all cursor-pointer ${
                       analyzeScenario1
                         ? "bg-blue-50 border-blue-200 text-blue-700 shadow-2xs font-bold"
-                        : "bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100/50"
+                        : "bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100/55"
                     }`}
                   >
                     <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center border ${
@@ -863,7 +889,7 @@ export default function App() {
                     className={`px-3 py-2 rounded-lg text-xs font-semibold border flex items-center gap-2 transition-all cursor-pointer ${
                       analyzeScenario2
                         ? "bg-indigo-50 border-indigo-200 text-indigo-700 shadow-2xs font-bold"
-                        : "bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100/50"
+                        : "bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100/55"
                     }`}
                   >
                     <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center border ${
@@ -1102,6 +1128,21 @@ export default function App() {
                     </div>
                     
                     <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1.5 px-3 bg-slate-50 text-slate-700 shadow-2xs hover:bg-slate-100/55 transition-all">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest font-mono">
+                          Base da Folha:
+                        </span>
+                        <select
+                          value={payrollCalculationBase}
+                          onChange={(e) => handlePayrollBaseChange(e.target.value as any)}
+                          className="text-xs font-bold text-slate-700 bg-transparent border-none focus:outline-none focus:ring-0 cursor-pointer p-0 pr-1"
+                        >
+                          <option value="custo_func">Custo Func (Recomendado)</option>
+                          <option value="sal_hrs_faltas">Sal - Hrs Faltas</option>
+                          <option value="sal_base">Sal. Base</option>
+                        </select>
+                      </div>
+
                       <button
                         type="button"
                         onClick={() => {
@@ -1111,7 +1152,7 @@ export default function App() {
                         className={`px-3 py-2 rounded-lg text-xs font-semibold border flex items-center gap-2 transition-all cursor-pointer ${
                           analyzeScenario1
                             ? "bg-blue-50 border-blue-200 text-blue-700 shadow-2xs font-bold"
-                            : "bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100/50"
+                            : "bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100/55"
                         }`}
                       >
                         <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center border ${
@@ -1131,7 +1172,7 @@ export default function App() {
                         className={`px-3 py-2 rounded-lg text-xs font-semibold border flex items-center gap-2 transition-all cursor-pointer ${
                           analyzeScenario2
                             ? "bg-indigo-50 border-indigo-200 text-indigo-700 shadow-2xs font-bold"
-                            : "bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100/50"
+                            : "bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100/55"
                         }`}
                       >
                         <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center border ${

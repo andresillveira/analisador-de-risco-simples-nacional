@@ -8,7 +8,7 @@ from pypdf import PdfReader
 from app.config import CFOP_MAP
 from app.utils.text_utils import clean_and_parse_float, split_csv_line, extract_and_normalize_cfop
 
-def parse_csv_txt(content: str, report_type: str) -> Dict[str, Any]:
+def parse_csv_txt(content: str, report_type: str, payroll_base: str = "custo_func") -> Dict[str, Any]:
     from app.services.risk_service import classify_cfop_row  # Import here to avoid circular imports if any
     
     lines = content.splitlines()
@@ -18,38 +18,124 @@ def parse_csv_txt(content: str, report_type: str) -> Dict[str, Any]:
     
     # 1. Folha de Pagamento Report
     if report_type == "Folha de Pagamento":
-        for line in lines:
-            line_str = line.strip()
-            if not line_str:
+        delimiter = ";"
+        for line in lines[:15]:
+            line_stripped = line.strip()
+            if not line_stripped:
+                continue
+            if ";" in line_stripped:
+                delimiter = ";"
+                break
+            elif "," in line_stripped:
+                if ";" not in line_stripped and line_stripped.count(",") > 5:
+                    delimiter = ","
+                    break
+            elif "|" in line_stripped:
+                delimiter = "|"
+                break
+            elif "\t" in line_stripped:
+                delimiter = "\t"
+                break
+        
+        import io
+        f = io.StringIO(content)
+        reader = csv.reader(f, delimiter=delimiter)
+        
+        rows = []
+        for r in reader:
+            if r:
+                rows.append([cell.strip() for cell in r])
+        
+        header_row_index = -1
+        custo_func_idx = -1
+        sal_hrs_faltas_idx = -1
+        sal_base_idx = -1
+        
+        for idx, row in enumerate(rows[:15]):
+            row_lower = [cell.lower() for cell in row]
+            has_contrato = any("contrato" in cell for cell in row_lower)
+            has_sal_base = any("sal. base" in cell or "salario base" in cell or "salário base" in cell for cell in row_lower)
+            
+            if has_contrato or has_sal_base:
+                header_row_index = idx
+                for c_idx, cell in enumerate(row):
+                    clean_cell = cell.lower().replace('\r', '').replace('\n', '').strip()
+                    if "custo func" in clean_cell or "custo de func" in clean_cell or "custo total" in clean_cell or "custo funcional" in clean_cell:
+                        custo_func_idx = c_idx
+                    elif "sal - hrs" in clean_cell or "sal. - hrs" in clean_cell or "horas faltas" in clean_cell or "sal-hrs" in clean_cell:
+                        sal_hrs_faltas_idx = c_idx
+                    elif "sal. base" in clean_cell or "salario base" in clean_cell or "salário base" in clean_cell or "sal base" in clean_cell:
+                        sal_base_idx = c_idx
+                break
+        
+        target_idx = -1
+        if payroll_base == "custo_func":
+            if custo_func_idx != -1:
+                target_idx = custo_func_idx
+            elif sal_hrs_faltas_idx != -1:
+                target_idx = sal_hrs_faltas_idx
+            elif sal_base_idx != -1:
+                target_idx = sal_base_idx
+        elif payroll_base == "sal_hrs_faltas":
+            if sal_hrs_faltas_idx != -1:
+                target_idx = sal_hrs_faltas_idx
+            elif custo_func_idx != -1:
+                target_idx = custo_func_idx
+            elif sal_base_idx != -1:
+                target_idx = sal_base_idx
+        else: # sal_base
+            if sal_base_idx != -1:
+                target_idx = sal_base_idx
+            elif sal_hrs_faltas_idx != -1:
+                target_idx = sal_hrs_faltas_idx
+            elif custo_func_idx != -1:
+                target_idx = custo_func_idx
+        
+        employee_rows = []
+        totalizer_row = None
+        
+        start_row = header_row_index + 1 if header_row_index != -1 else 0
+        for row in rows[start_row:]:
+            if not row or not any(row):
                 continue
             
-            parts = split_csv_line(line_str)
-            if not parts:
+            first_cell = row[0]
+            if "tot emp" in first_cell.lower() or "total geral" in first_cell.lower() or "tot. emp" in first_cell.lower():
+                totalizer_row = row
                 continue
             
-            parts = [p.strip() for p in parts]
-            
-            col0 = parts[0]
-            if re.match(r'^\d{1,6}\s', col0) or (re.match(r'^\d{1,6}$', col0) and len(parts) > 1):
-                val = 0.0
-                for cell in reversed(parts):
+            if re.match(r'^\d{1,6}\s', first_cell) or (re.match(r'^\d{1,6}$', first_cell) and len(row) > 1):
+                employee_rows.append(row)
+        
+        def extract_row_value(row) -> float:
+            if target_idx != -1 and target_idx < len(row):
+                val_str = row[target_idx].strip()
+                return clean_and_parse_float(val_str)
+            else:
+                for cell in reversed(row):
                     cell_stripped = cell.strip()
                     if not cell_stripped:
                         continue
-                    
                     clean_alpha_check = re.sub(r'(?i)R\$\s?', '', cell_stripped).strip()
                     if "/" in cell_stripped or re.match(r'^[a-zA-Z\sà-úÀ-Ú\ufffdáéíóúâêôãõçÁÉÍÓÚÂÊÔÃÕÇ]+$', clean_alpha_check):
                         continue
-                        
                     v = clean_and_parse_float(cell_stripped)
                     if v > 0.0:
-                        val = v
-                        break
-                
-                if val > 0.0:
-                    breakdown["folha"] += val
-                    total += val
-                    valid_rows += 1
+                        return v
+                return 0.0
+        
+        total_val = 0.0
+        if totalizer_row:
+            total_val = extract_row_value(totalizer_row)
+            
+        if total_val <= 0.0:
+            for emp in employee_rows:
+                total_val += extract_row_value(emp)
+        
+        valid_rows = len(employee_rows)
+        total = total_val
+        breakdown["folha"] = total
+        
         return {"total": round(total, 2), "rowCount": valid_rows, "breakdown": {k: round(v, 2) for k, v in breakdown.items()}}
         
     # 2. General Fiscal reports (ICMS, ISS, Outras Despesas)
@@ -144,7 +230,7 @@ def parse_csv_txt(content: str, report_type: str) -> Dict[str, Any]:
             
     return {"total": round(total, 2), "rowCount": valid_rows, "breakdown": {k: round(v, 2) for k, v in breakdown.items()}}
 
-def parse_excel(content_bytes: bytes, report_type: str) -> Dict[str, Any]:
+def parse_excel(content_bytes: bytes, report_type: str, payroll_base: str = "custo_func") -> Dict[str, Any]:
     try:
         xl = pd.ExcelFile(io.BytesIO(content_bytes))
         sheet_name = xl.sheet_names[0]
@@ -165,9 +251,9 @@ def parse_excel(content_bytes: bytes, report_type: str) -> Dict[str, Any]:
         lines.append(line)
         
     content = "\n".join(lines)
-    return parse_csv_txt(content, report_type)
+    return parse_csv_txt(content, report_type, payroll_base)
 
-def parse_pdf(content_bytes: bytes, report_type: str) -> Dict[str, Any]:
+def parse_pdf(content_bytes: bytes, report_type: str, payroll_base: str = "custo_func") -> Dict[str, Any]:
     try:
         reader = PdfReader(io.BytesIO(content_bytes))
         lines = []
@@ -187,4 +273,4 @@ def parse_pdf(content_bytes: bytes, report_type: str) -> Dict[str, Any]:
         return {"total": 0.0, "rowCount": 0, "breakdown": {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0}}
         
     content = "\n".join(lines)
-    return parse_csv_txt(content, report_type)
+    return parse_csv_txt(content, report_type, payroll_base)
