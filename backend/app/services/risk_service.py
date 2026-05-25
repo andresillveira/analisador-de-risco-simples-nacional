@@ -4,6 +4,12 @@ from app.config import CFOP_MAP
 
 def classify_cfop_row(cfop_code: str, val: float, report_type: str) -> Dict[str, float]:
     res = {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0}
+    
+    # Correção: CFOPs 1.128, 2.128 e 3.128 (ISSQN) entram como Outras Despesas
+    if cfop_code in ["1.128", "2.128", "3.128", "1128", "2128", "3128"]:
+        res["outras"] = val
+        return res
+        
     info = CFOP_MAP.get(cfop_code)
     
     if info:
