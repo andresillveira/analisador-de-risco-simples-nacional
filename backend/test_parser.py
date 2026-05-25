@@ -2,10 +2,18 @@ import os
 import sys
 import re
 
-# Add backend to path to import app
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+import importlib.util
 
-from app import parse_csv_txt, CFOP_MAP
+# Load app.py dynamically to prevent collision with the 'app' package
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+spec = importlib.util.spec_from_file_location("app_monolithic", os.path.join(backend_dir, "app.py"))
+app_monolithic = importlib.util.module_from_spec(spec)
+sys.modules["app_monolithic"] = app_monolithic
+spec.loader.exec_module(app_monolithic)
+
+parse_csv_txt = app_monolithic.parse_csv_txt
+CFOP_MAP = app_monolithic.CFOP_MAP
+split_combined_file = app_monolithic.split_combined_file
 
 def read_file_safely(path):
     with open(path, "rb") as f:
@@ -70,7 +78,6 @@ def run_tests():
     content = read_file_safely(icms_path)
     
     # Combined files are split in app.py
-    from app import split_combined_file
     splits = split_combined_file(os.path.basename(icms_path), content)
     print(f"File: {os.path.basename(icms_path)} (Splitting into Entradas and Saídas)")
     assert len(splits) == 2, f"Expected 2 splits, got {len(splits)}"
