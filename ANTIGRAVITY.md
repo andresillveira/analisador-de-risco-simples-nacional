@@ -26,7 +26,8 @@ graph TD
         App --> Dashboard[DashboardCards.tsx]
         App --> RiskCards[RiskAnalysisCards.tsx]
         App --> ManualEd[ManualValuesEditor.tsx]
-        App --> AuditHist[AuditHistorySection.tsx]
+        App --> SaveAudit[SaveAuditConsole.tsx]
+        App --> AuditHistTab[AuditHistoryTab.tsx]
         App --> PrintRep[PrintReport.tsx]
     end
 
@@ -40,7 +41,8 @@ graph TD
 
     Dropzone -- "Upload de arquivos (POST /api/analyze)" --> Router
     ManualEd -- "Overrides Manuais (POST /api/manual-values)" --> Router
-    AuditHist -- "Histórico e Diffs (POST /api/compare-audits)" --> Router
+    SaveAudit -- "Registrar Auditoria (POST /api/history)" --> Router
+    AuditHistTab -- "Comparador e Diffs (POST /api/compare-audits)" --> Router
     
     Router --> Parser
     Router --> RiskEngine
@@ -100,7 +102,8 @@ D:\analisador-de-risco-simples-nacional\
 ├── src/                      # ⚛️ Subsistema Frontend (React + TS + Tailwind)
 │   ├── components/           # Componentes encapsulados de UI
 │   │   ├── AlertManager.tsx        # Renderização dinâmica de cards de alerta e leis
-│   │   ├── AuditHistorySection.tsx # Painel de busca, deleção e comparação de auditorias
+│   │   ├── SaveAuditConsole.tsx    # Console lateral compacto para registrar auditorias no histórico
+│   │   ├── AuditHistoryTab.tsx     # Nova aba dedicada do Histórico de Análises com filtros avançados
 │   │   ├── DashboardCards.tsx      # Cards de resumo estatístico e progresso visual
 │   │   ├── ManualValuesEditor.tsx  # Painel de inserção e simulação numérica rápida
 │   │   ├── PrintReport.tsx         # Layout otimizado para impressão de relatórios fiscais
@@ -197,10 +200,10 @@ Para análises onde o usuário não possui os arquivos fiscais ou deseja testar 
 3.  **Cálculo em Tempo Real:** Cada alteração envia os dados para `POST /api/manual-values`. O backend persiste o estado no JSON e reavalia a matemática tributária do Art. 29 imediatamente, devolvendo os novos alertas e riscos para atualização instantânea dos gráficos e termômetros visuais.
 
 ### C. Fluxo de Histórico e Comparação de Auditorias
-O painel de histórico (`AuditHistorySection`) provê rastreabilidade completa e possibilita ver a evolução financeira da empresa:
+O painel de histórico (`AuditHistoryTab`) provê rastreabilidade completa e possibilita ver a evolução financeira da empresa:
 
-*   **Salvar Auditoria:** Com os resultados em tela, o usuário salva o registro. O front envia um `POST /api/history`. O backend gera um ID único, anexa um timestamp real e adiciona o registro no topo de `history.json`.
-*   **Comparação Cruzada:** O usuário pode selecionar dois cards quaisquer do histórico (Auditoria A e Auditoria B) e clicar em "Comparar". O front dispara um `POST /api/compare-audits` contendo os dois IDs. O backend busca ambos em `history.json`, calcula as variações absolutas de faturamento, compras e despesas, calcula o delta percentual e sinaliza se houve mudança de status legal do Simples Nacional (ex: passou de Regular para Em Risco).
+*   **Salvar Auditoria:** Com os resultados em tela, o usuário salva o registro utilizando o `SaveAuditConsole`. O front envia um `POST /api/history`. O backend gera um ID único, anexa um timestamp real e adiciona o registro no topo de `history.json`.
+*   **Comparação Cruzada:** O usuário pode selecionar dois cards quaisquer do histórico (`AuditHistoryTab`) e clicar em "Comparar". O front dispara um `POST /api/compare-audits` contendo os dois IDs. O backend busca ambos em `history.json`, calcula as variações absolutas de faturamento, compras e despesas, calcula o delta percentual e sinaliza se houve mudança de status legal do Simples Nacional (ex: passou de Regular para Em Risco).
 
 ---
 
@@ -284,6 +287,13 @@ Em Maio de 2026, a aplicação passou por uma refatoração estrutural crítica 
 ### E. Correção na Lógica de Classificação do Ativo Imobilizado (Cenário 2)
 - **O Problema**: As aquisições destinadas ao **Ativo Imobilizado** (ex: CFOPs da série 1.551/2.551 e correlatos) eram ignoradas no motor de risco, distorcendo o montante total de despesas e custos operacionais do Cenário 2 (Anexo IX - Limite de 120%).
 - **A Solução**: Atualizamos a função `classify_cfop_row` no backend (monolítico e serviços modulares) para detectar dinamicamente esses CFOPs e adicioná-los às **Outras Despesas** (`res["outras"]`), integrando-os ao cálculo de riscos do Inciso IX. O Cenário 1 (Inciso X - Compras de Mercadorias) permanece inalterado e isolado, mantendo a integridade matemática da auditoria.
+
+### F. Desacoplamento do Histórico Tributário e Filtros Avançados
+- **O Problema**: O histórico de auditorias estava acoplado na barra lateral da tela de importação, poluindo a UI. Além disso, ao salvar uma análise, os dados permaneciam preenchidos na tela de origem, gerando fricção por exigir limpeza manual antes da próxima auditoria.
+- **A Solução**:
+  1. Desacoplamos o histórico criando o componente `AuditHistoryTab.tsx` associado a uma nova aba exclusiva ("Histórico de Análises"). Adicionamos filtros rápidos avançados (busca textual por Nome/Período e pílulas reativas de situação fiscal: "Todos", "Com Risco", "Regular"), contador dinâmico, estatísticas de conformidade de carteira e o comparador integrado.
+  2. Desenvolvemos o componente compacto `SaveAuditConsole.tsx` para o salvamento de registros fiscais de forma limpa.
+  3. Criamos a função `handleSaveSuccess` no `App.tsx` que, ao registrar uma auditoria com sucesso, limpa/reseta instantaneamente todas as variáveis de estado da tela de upload de arquivos (inclusive overrides e assinaturas locais) e redireciona o usuário para a nova aba do histórico automaticamente.
 
 ---
 

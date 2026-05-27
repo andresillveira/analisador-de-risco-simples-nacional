@@ -21,7 +21,8 @@ import {
   Clock,
   RefreshCw,
   Lock,
-  UploadCloud
+  UploadCloud,
+  History
 } from "lucide-react";
 
 import { FileItem, CompanyInfo, AnalysisResults, AlertMessage, EMPTY_RESULTS, EMPTY_ALERTS, SimulationProfile, ManualValues } from "./types";
@@ -31,7 +32,8 @@ import DashboardCards from "./components/DashboardCards";
 import RiskAnalysisCards from "./components/RiskAnalysisCards";
 import AlertManager from "./components/AlertManager";
 import PrintReport from "./components/PrintReport";
-import AuditHistorySection from "./components/AuditHistorySection";
+import SaveAuditConsole from "./components/SaveAuditConsole";
+import AuditHistoryTab from "./components/AuditHistoryTab";
 import ManualValuesEditor from "./components/ManualValuesEditor";
 
 const areBreakdownsEqual = (b1?: any, b2?: any) => {
@@ -43,7 +45,7 @@ const areBreakdownsEqual = (b1?: any, b2?: any) => {
 
 export default function App() {
   // Navigation State
-  const [activeTab, setActiveTab] = useState<"simulations" | "import">("simulations");
+  const [activeTab, setActiveTab] = useState<"simulations" | "import" | "history">("simulations");
   
   // Shared Print Preview & Core Backend Status
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
@@ -518,6 +520,21 @@ export default function App() {
     const resetFiles = restoredFiles.map(f => ({ ...f, processedByBackend: false }));
     setImportFiles(resetFiles);
     setImportCompanyInfo(restoredCompany);
+    setActiveTab("import");
+  };
+
+  const handleSaveSuccess = () => {
+    setImportFiles([]);
+    setImportCompanyInfo({
+      name: "Nova Empresa S/A",
+      period: "Mês/Ano Atual"
+    });
+    setIsNameAutoCaptured(false);
+    setCurrentManualValues(null);
+    setManualResults(null);
+    setManualAlerts(null);
+    lastImportSignatureRef.current = "";
+    setActiveTab("history");
   };
 
   // Load manual values from backend on company/period change
@@ -735,6 +752,23 @@ export default function App() {
                 activeTab === "import" ? "bg-emerald-100 text-emerald-800 font-bold" : "bg-slate-100 text-slate-600"
               }`}>
                 Upload Real
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`py-4 px-2 border-b-2 font-bold text-xs uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+                activeTab === "history"
+                  ? "border-blue-600 text-blue-600 font-extrabold"
+                  : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
+              }`}
+            >
+              <History className={`w-4 h-4 transition-transform group-hover:scale-110 ${activeTab === "history" ? "text-blue-600" : "text-slate-400"}`} />
+              <span>Histórico de Análises</span>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-semibold font-mono ml-1 ${
+                activeTab === "history" ? "bg-indigo-100 text-indigo-800 font-bold" : "bg-slate-100 text-slate-600"
+              }`}>
+                Histórico
               </span>
             </button>
           </div>
@@ -1042,12 +1076,12 @@ export default function App() {
                 isAnalyzing={isSavingManual}
               />
 
-              {/* HISTÓRICO DE AUDITORIAS E COMPARAÇÃO */}
-              <AuditHistorySection
+              {/* COMPONENTE DE SALVAMENTO DE REGISTRO */}
+              <SaveAuditConsole
                 currentFiles={importFiles}
                 currentCompany={importCompanyInfo}
                 currentResults={activeResults}
-                onRestoreAudit={handleRestoreAudit}
+                onSaveSuccess={handleSaveSuccess}
               />
 
             </aside>
@@ -1270,6 +1304,13 @@ export default function App() {
 
             </main>
           </>
+        )}
+
+        {/* === TAB 3: AUDIT HISTORY WORKSPACE === */}
+        {activeTab === "history" && (
+          <AuditHistoryTab
+            onRestoreAudit={handleRestoreAudit}
+          />
         )}
 
       </div>

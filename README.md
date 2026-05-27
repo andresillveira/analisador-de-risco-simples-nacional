@@ -40,7 +40,8 @@ graph TD
         App --> Dashboard[DashboardCards.tsx]
         App --> RiskCards[RiskAnalysisCards.tsx]
         App --> ManualEd[ManualValuesEditor.tsx]
-        App --> AuditHist[AuditHistorySection.tsx]
+        App --> SaveAudit[SaveAuditConsole.tsx]
+        App --> AuditHistTab[AuditHistoryTab.tsx]
         App --> PrintRep[PrintReport.tsx]
     end
 
@@ -54,7 +55,8 @@ graph TD
 
     Dropzone -- "Upload de arquivos (POST /api/analyze)" --> Router
     ManualEd -- "Overrides Manuais (POST /api/manual-values)" --> Router
-    AuditHist -- "Histórico e Diffs (POST /api/compare-audits)" --> Router
+    SaveAudit -- "Registrar Auditoria (POST /api/history)" --> Router
+    AuditHistTab -- "Comparador e Diffs (POST /api/compare-audits)" --> Router
     
     Router --> Parser
     Router --> RiskEngine
@@ -68,7 +70,7 @@ graph TD
 2. **Parser e Sanitização de Texto:** Em `parser_service.py`, os dados são limpos (removendo "R$", pontos e vírgulas de forma inteligente) e associados à tabela de referência de mais de 300 códigos em `CFOP_Categorizado.csv` para rotulação fiscal automática (Vendas, Compras, Outras Despesas ou Ignorados).
 3. **Mecanismo Fiscal (Risk Engine):** Consolida os dados e aplica as regras do Art. 29 da LC 123/2006.
 4. **Simulação e Overrides:** O `ManualValuesEditor` permite testar cenários hipotéticos ou preencher campos manualmente. Todas as atualizações recalculam instantaneamente os riscos de exclusão na tela.
-5. **Histórico e Comparação Cruzada:** A aplicação persiste as auditorias salvas em um banco de dados local leve (`history.json`), viabilizando a busca, exclusão e comparação cruzada de duas auditorias para avaliação de variações financeiras e transições de status fiscal.
+5. **Histórico e Comparação Cruzada:** A aplicação disponibiliza o `SaveAuditConsole` para registrar análises. Elas são gravadas localmente em `history.json` e exibidas na nova aba "Histórico de Análises" (gerenciada por `AuditHistoryTab`), permitindo buscas avançadas, deleção rápida e comparações side-by-side de duas auditorias.
 
 ---
 
@@ -117,7 +119,8 @@ Abaixo encontra-se o mapeamento das pastas mais importantes para auxiliar no des
 ├── src/                            # ⚛️ Subsistema Frontend (React + TypeScript)
 │   ├── components/                 # Componentes de UI encapsulados
 │   │   ├── AlertManager.tsx        # Card de fundamentação legal e leis vigentes
-│   │   ├── AuditHistorySection.tsx # Painel de histórico e comparador de simulações
+│   │   ├── SaveAuditConsole.tsx    # Console lateral compacto para registrar auditorias no histórico
+│   │   ├── AuditHistoryTab.tsx     # Nova aba dedicada do Histórico de Análises com filtros avançados
 │   │   ├── DashboardCards.tsx      # Indicadores de faturamento, despesas e compras
 │   │   ├── ManualValuesEditor.tsx  # Simulador interativo de dados financeiros
 │   │   ├── PrintReport.tsx         # Layout otimizado para impressão/PDF do relatório
@@ -208,6 +211,7 @@ Em **Maio de 2026**, o projeto passou por uma profunda refatoração estrutural 
 *   **Exibição Consistente de Outras Receitas no Relatório de Impressão:** Ajustado o componente `PrintReport.tsx` para apresentar de forma condicional a linha de "↳ Outras Receitas" na tabela de receitas tributáveis, mantendo os totais de faturamento e despesas do relatório impresso 100% coerentes com a tela principal.
 *   **Solução para Colisão de Importação do Uvicorn:** Ajustada a inicialização de `backend/app.py`. A importação de pacotes internos foi isolada nos testes fiscais (`tests/test_calculator.py`) através de carregamento dinâmico com `importlib.util.spec_from_file_location`, e a inicialização local do Uvicorn foi modificada para apontar diretamente para a instância física de `app` em vez de carregar via string (`uvicorn.run(app, ...)`), garantindo boot instantâneo e estável em qualquer terminal local.
 *   **Correção na Lógica de Classificação do Ativo Imobilizado (Cenário 2):** Corrigido o bug na triagem de aquisições de ativo imobilizado (séries 1.551/2.551 e correlatos). A função `classify_cfop_row` foi ajustada para que estas entradas sejam classificadas como **Outras Despesas** no **Cenário 2 (Inciso IX - 120%)** ao invés de ignoradas, enquanto permanecem isoladas do cálculo do **Cenário 1 (Inciso X - Compras)**.
+*   **Desacoplamento do Histórico Tributário e Filtros Avançados:** Criamos a aba dedicada "Histórico de Análises" (`AuditHistoryTab.tsx`) separando-a do painel de uploads. Adicionamos filtros reativos e buscas textuais avançadas por Nome da Empresa/Período, estatísticas de conformidade fiscal de carteira e o comparador de cenários. Integramos o formulário compacto `SaveAuditConsole.tsx` e criamos a função de limpeza automática (`handleSaveSuccess`) em `App.tsx` que, ao registrar com sucesso, apaga instantaneamente todos os campos e arquivos da tela de auditoria, deixando-a pronta para novos uploads, e redireciona o usuário para o histórico.
 
 ---
 
