@@ -201,14 +201,24 @@ export default function PrintReport({
                 </thead>
                 <tbody className="divide-y divide-slate-200 font-mono">
                   <tr>
-                    <td className="py-2 px-3 font-sans font-semibold">Total de Faturamento Bruto (Ingressos de Recursos)</td>
-                    <td className="py-2 px-3 text-slate-500 text-[10px]">Vendas + Serviços Prestados</td>
-                    <td className="py-2 px-3 text-right font-bold">{formatBRL(results.faturamento)}</td>
+                    <td className="py-2 px-3 font-sans font-semibold text-slate-900">Total de Faturamento Líquido (Ingressos)</td>
+                    <td className="py-2 px-3 text-slate-500 text-[10px]">Vendas Líquidas + Serviços Prestados</td>
+                    <td className="py-2 px-3 text-right font-bold text-slate-900">{formatBRL(results.faturamento)}</td>
                   </tr>
                   <tr>
-                    <td className="py-2 px-3 pl-6 font-sans">↳ Vendas Declaradas</td>
+                    <td className="py-2 px-3 pl-6 font-sans">↳ Vendas Brutas</td>
                     <td className="py-2 px-3 text-slate-400 text-[10px]">Livro de Saídas Comerciais</td>
                     <td className="py-2 px-3 text-right text-slate-600">{formatBRL(results.vendasContabilizadas)}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 px-3 pl-6 font-sans text-rose-600">↳ (-) Devoluções de Vendas</td>
+                    <td className="py-2 px-3 text-rose-500 text-[10px]">Devoluções nas Entradas (Retornos de Clientes)</td>
+                    <td className="py-2 px-3 text-right text-rose-600">-{formatBRL(results.devolucoesVendas)}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 px-3 pl-6 font-sans font-semibold">↳ (=) Vendas Líquidas</td>
+                    <td className="py-2 px-3 text-slate-400 text-[10px]">Base para o Faturamento</td>
+                    <td className="py-2 px-3 text-right text-slate-700 font-semibold">{formatBRL(results.vendasLiquidas)}</td>
                   </tr>
                   <tr>
                     <td className="py-2 px-3 pl-6 font-sans">↳ Serviços Prestados</td>
@@ -223,9 +233,19 @@ export default function PrintReport({
                     </tr>
                   )}
                   <tr>
-                    <td className="py-2 px-3 font-sans font-semibold text-slate-900">Aquisição de Mercadorias (Compras)</td>
-                    <td className="py-2 px-3 text-slate-500 text-[10px]">Revenda/Industrialização (Excluído Uso, Consumo, Ativos e Fretes)</td>
-                    <td className="py-2 px-3 text-right font-bold text-slate-900">{formatBRL(results.comprasContabilizadas)}</td>
+                    <td className="py-2 px-3 font-sans font-semibold text-slate-900">Aquisição de Mercadorias (Compras Brutas)</td>
+                    <td className="py-2 px-3 text-slate-500 text-[10px]">Revenda/Industrialização Bruta</td>
+                    <td className="py-2 px-3 text-right font-bold text-slate-800">{formatBRL(results.comprasContabilizadas)}</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 px-3 pl-6 font-sans text-rose-600">↳ (-) Devoluções de Compras</td>
+                    <td className="py-2 px-3 text-rose-500 text-[10px]">Devoluções nas Saídas (Retorno ao Fornecedor)</td>
+                    <td className="py-2 px-3 text-right text-rose-600">-{formatBRL(results.devolucoesCompras)}</td>
+                  </tr>
+                  <tr className="bg-slate-50/50">
+                    <td className="py-2 px-3 font-sans font-bold text-slate-900">↳ (=) Compras Líquidas (Base Inciso X)</td>
+                    <td className="py-2 px-3 text-slate-600 font-semibold text-[10px]">Valor líquido considerado nas despesas e teto compras</td>
+                    <td className="py-2 px-3 text-right font-bold text-slate-900">{formatBRL(results.comprasLiquidas)}</td>
                   </tr>
                   <tr>
                     <td className="py-2 px-3 font-sans font-semibold">Despesas Gerais Pagas do período</td>
@@ -253,7 +273,7 @@ export default function PrintReport({
                 <div className="p-4 rounded-xl border border-slate-200">
                   <span className="text-[10px] font-bold text-blue-900 font-mono block">Inciso X (Regra de Compras 80%)</span>
                   <p className="text-[11px] text-slate-500 mt-1 mb-2 font-mono">
-                    Fórmula: Compras / Fatur. = {results.comprasPercentage.toFixed(2)}%
+                    Fórmula: Compras Líq. / Fatur. Líq. = {results.comprasPercentage.toFixed(2)}%
                   </p>
                   <div className="flex justify-between items-center text-xs font-semibold">
                     <span>Limite Máximo:</span>
@@ -278,7 +298,7 @@ export default function PrintReport({
                 <div className="p-4 rounded-xl border border-slate-200">
                   <span className="text-[10px] font-bold text-indigo-900 font-mono block">Inciso IX (Regra de Despesas 120%)</span>
                   <p className="text-[11px] text-slate-500 mt-1 mb-2 font-mono">
-                    Fórmula: Despesas / Fatur. = {results.despesasPercentage.toFixed(2)}%
+                    Fórmula: Despesas / Fatur. Líq. = {results.despesasPercentage.toFixed(2)}%
                   </p>
                   <div className="flex justify-between items-center text-xs font-semibold">
                     <span>Limite Máximo:</span>

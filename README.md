@@ -192,13 +192,15 @@ O arquivo [CFOP_Categorizado.csv](file:///D:/analisador-de-risco-simples-naciona
 
 | Prefixo/Código de CFOP | Categoria Classificada | Impacto no Dashboard |
 | :--- | :--- | :--- |
-| **Dígitos iniciais 5 e 6** (Exceto Serviços) | Vendas de Mercadorias | Soma ao Faturamento (Ingressos de Recursos). |
+| **Dígitos iniciais 5 e 6** (Exceto Serviços) | Vendas de Mercadorias | Soma ao Faturamento Bruto de Vendas. |
 | **CFOPs 9.xxx** (ou Saídas de Serviços) | Serviços Prestados | Soma ao Faturamento (Ingressos de Recursos). |
 | **CFOPs de Aquisição** (ex: `1.102`, `2.102`, `1.403`) | Compras de Mercadorias | Base do cálculo do **Inciso X** (Limite de 80%). |
 | **CFOPs de Consumo / Fretes** (ex: `1.556`, `2.352`) | Despesas / Consumo | Computado como despesas operacionais no **Inciso IX** (120%). |
 | **CFOPs 8.xxx** (ou Entradas de Serviços) | Serviços Tomados | Computado como despesas de terceiros no **Inciso IX** (120%). |
 | **CFOPs de Ativo Imobilizado (Aquisição)** (ex: `1.551`, `2.551`, `1.406`, `2.151`) | Ativo Imobilizado | **Cenário 2 (Inciso IX):** Computado como Outras Despesas. **Cenário 1 (Inciso X):** Totalmente desconsiderado (isolado). |
-| **Devoluções / Transferências / Outros** (ex: `1.202`, `1.552`) | Desconsiderados | Ignorados em ambos os limites (não afetam as contas para evitar distorções). |
+| **Devoluções de Venda (Entradas)** (ex: `1.202`, `2.202`) | Devolução de Venda | **Redutor de Vendas:** Subtraído das Vendas para obter as Vendas Líquidas. |
+| **Devoluções de Compra (Saídas)** (ex: `5.201`, `6.201`) | Devolução de Compra | **Redutor de Compras:** Subtraído das Compras para obter as Compras Líquidas. |
+| **Transferências / Outros** (ex: `1.552`, `5.552`) | Desconsiderados | Ignorados em ambos os limites (não afetam as contas para evitar distorções). |
 
 ---
 
@@ -206,12 +208,13 @@ O arquivo [CFOP_Categorizado.csv](file:///D:/analisador-de-risco-simples-naciona
 
 Em **Maio de 2026**, o projeto passou por uma profunda refatoração estrutural com o objetivo de eliminar bugs de conciliação de estado e melhorar a robustez operacional da ferramenta:
 
+*   **Lógica de Abatimento Cruzado de Devoluções (Nova Regra de Negócio):** Implementado o motor de cálculo reativo para processar devoluções como elementos redutores das operações inversas. As Devoluções de Vendas (Entradas fiscais com descrição de devolução) agora abatem o faturamento de vendas obtendo as Vendas Líquidas, enquanto as Devoluções de Compras (Saídas fiscais com descrição de devolução) abatem as compras obtendo as Compras Líquidas. Isso previne distorções fiscais e garante que as contas de faturamento e despesas reflitam fielmente os limites dos Incisos IX e X do Art. 29.
 *   **Sincronização e Simetria de Contrato (Outras Receitas):** Corrigido o bug na API de overrides manuais onde o campo `outrasReceitasContabilizadas` (enviado pelo formulário de edição de Outras Receitas) não estava mapeado no retorno do backend monolítico. O contrato foi alinhado usando o modelo do Pydantic (`AnalysisResultsModel`), garantindo consistência completa e evitando panes na tela.
 *   **Correção de Gravação no Histórico:** Corrigida a persistência na gravação de auditorias para garantir que as alterações manuais ativas feitas no simulador sejam gravadas fielmente no banco local (`history.json`). O componente `<AuditHistorySection>` agora recebe a variável de estado de resultados ativos atualizados (`currentResults={activeResults}`) em vez dos resultados brutos originais do upload.
 *   **Exibição Consistente de Outras Receitas no Relatório de Impressão:** Ajustado o componente `PrintReport.tsx` para apresentar de forma condicional a linha de "↳ Outras Receitas" na tabela de receitas tributáveis, mantendo os totais de faturamento e despesas do relatório impresso 100% coerentes com a tela principal.
 *   **Solução para Colisão de Importação do Uvicorn:** Ajustada a inicialização de `backend/app.py`. A importação de pacotes internos foi isolada nos testes fiscais (`tests/test_calculator.py`) através de carregamento dinâmico com `importlib.util.spec_from_file_location`, e a inicialização local do Uvicorn foi modificada para apontar diretamente para a instância física de `app` em vez de carregar via string (`uvicorn.run(app, ...)`), garantindo boot instantâneo e estável em qualquer terminal local.
 *   **Correção na Lógica de Classificação do Ativo Imobilizado (Cenário 2):** Corrigido o bug na triagem de aquisições de ativo imobilizado (séries 1.551/2.551 e correlatos). A função `classify_cfop_row` foi ajustada para que estas entradas sejam classificadas como **Outras Despesas** no **Cenário 2 (Inciso IX - 120%)** ao invés de ignoradas, enquanto permanecem isoladas do cálculo do **Cenário 1 (Inciso X - Compras)**.
-*   **Desacoplamento do Histórico Tributário e Filtros Avançados:** Criamos a aba dedicada "Histórico de Análises" (`AuditHistoryTab.tsx`) separando-a do painel de uploads. Adicionamos filtros reativos e buscas textuais avançadas por Nome da Empresa/Período, estatísticas de conformidade fiscal de carteira e o comparador de cenários. Integramos o formulário compacto `SaveAuditConsole.tsx` e criamos a função de limpeza automática (`handleSaveSuccess`) em `App.tsx` que, ao registrar com sucesso, apaga instantaneamente todos os campos e arquivos da tela de auditoria, deixando-a pronta para novos uploads, e redireciona o usuário para o histórico.
+*   **Desacoplamento do Histórico Tributário e Filtros Avançados:** Criamos a aba dedicada "Histórico de Análises" (`AuditHistoryTab.tsx`) separando-a do painel de uploads. Adicionamos filtros reativos e buscas textuais avançadas por Nome da Empresa/Período, estatísticas de conformidade fiscal de carteira e o comparador de cenários. Integramos o formulário compacto `SaveAuditConsole.tsx` e criamos a função de limpeza automática (`handleSaveSuccess`) em `App.tsx` que, ao registrar com sucesso, apaga instantaneamente todos os campos e arquivos da tela de auditoria, deixando-a pronta for novos uploads, e redireciona o usuário para o histórico.
 
 ---
 

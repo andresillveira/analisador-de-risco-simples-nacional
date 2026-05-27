@@ -219,7 +219,9 @@ def get_manual_values(company: str, period: str):
             servicos_tomados=model.get("servicos_tomados", 0.0),
             folha_pagamento=model.get("folha_pagamento", 0.0),
             outras_receitas=model.get("outras_receitas", 0.0),
-            outras_despesas=model.get("outras_despesas", 0.0)
+            outras_despesas=model.get("outras_despesas", 0.0),
+            devolucoes_vendas=model.get("devolucoes_vendas", 0.0),
+            devolucoes_compras=model.get("devolucoes_compras", 0.0)
         )
         alerts = generate_alerts([], results, is_manual=model.get("is_manual", False))
         return {
@@ -238,6 +240,8 @@ def get_manual_values(company: str, period: str):
         "folha_pagamento": 0.0,
         "outras_receitas": 0.0,
         "outras_despesas": 0.0,
+        "devolucoes_vendas": 0.0,
+        "devolucoes_compras": 0.0,
         "is_manual": False
     }
     results = calculate_risk_from_values(0, 0, 0, 0, 0, 0, 0)
@@ -263,7 +267,9 @@ def save_manual_values(model: ManualValuesModel):
         servicos_tomados=model.servicos_tomados,
         folha_pagamento=model.folha_pagamento,
         outras_receitas=model.outras_receitas,
-        outras_despesas=model.outras_despesas
+        outras_despesas=model.outras_despesas,
+        devolucoes_vendas=model.devolucoes_vendas,
+        devolucoes_compras=model.devolucoes_compras
     )
     alerts = generate_alerts([], results, is_manual=model.is_manual)
     

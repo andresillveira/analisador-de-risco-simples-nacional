@@ -22,6 +22,8 @@ export interface FileItem {
     servicos: number;
     outras: number;
     folha: number;
+    devolucoes_entrada?: number;
+    devolucoes_saida?: number;
   };
 }
 
@@ -33,8 +35,12 @@ export interface CompanyInfo {
 export interface AnalysisResults {
   faturamento: number;
   vendasContabilizadas: number;
+  devolucoesVendas: number;
+  vendasLiquidas: number;
   servicosCfopContabilizados: number;
   comprasContabilizadas: number;
+  devolucoesCompras: number;
+  comprasLiquidas: number;
   despesasContabilizadas: number;
   folhaPagamentoContabilizada: number;
   outrasDespesasContabilizadas: number;
@@ -109,8 +115,12 @@ export interface ReportTypeInfo {
 export const EMPTY_RESULTS: AnalysisResults = {
   faturamento: 0,
   vendasContabilizadas: 0,
+  devolucoesVendas: 0,
+  vendasLiquidas: 0,
   servicosCfopContabilizados: 0,
   comprasContabilizadas: 0,
+  devolucoesCompras: 0,
+  comprasLiquidas: 0,
   despesasContabilizadas: 0,
   folhaPagamentoContabilizada: 0,
   outrasDespesasContabilizadas: 0,
@@ -149,5 +159,7 @@ export interface ManualValues {
   folha_pagamento: number;
   outras_receitas: number;
   outras_despesas: number;
+  devolucoes_vendas?: number;
+  devolucoes_compras?: number;
   is_manual: boolean;
 }

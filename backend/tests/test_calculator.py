@@ -148,5 +148,53 @@ class TestTaxCalculator(unittest.TestCase):
         self.assertEqual(res_1102["compras"], 500.0)
         self.assertEqual(res_1102["outras"], 0.0)
 
+    def test_devolucao_offsetting(self):
+        # 1. Test classify_cfop_row for devoluções
+        # Devolução de venda (Entrada) Ex: 1.201, 2.202
+        res_1201 = classify_cfop_row("1.201", 1000.0, "Vendas")
+        self.assertEqual(res_1201["devolucoes_entrada"], 1000.0)
+        self.assertEqual(res_1201["vendas"], 0.0)
+        
+        # Devolução de compra (Saída) Ex: 5.201, 6.202
+        res_5201 = classify_cfop_row("5.201", 2000.0, "Compras")
+        self.assertEqual(res_5201["devolucoes_saida"], 2000.0)
+        self.assertEqual(res_5201["compras"], 0.0)
+
+        # 2. Test calculate_risk with devoluções
+        files = [
+            {"type": "Vendas", "breakdown": {"compras": 0.0, "vendas": 100000.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0, "devolucoes_entrada": 20000.0, "devolucoes_saida": 0.0}},
+            {"type": "Compras", "breakdown": {"compras": 50000.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0, "devolucoes_entrada": 0.0, "devolucoes_saida": 10000.0}},
+            {"type": "Folha de Pagamento", "breakdown": {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 10000.0, "devolucoes_entrada": 0.0, "devolucoes_saida": 0.0}}
+        ]
+        res = calculate_risk(files)
+        # Vendas Brutas = 100k, Dev. Vendas = 20k => Vendas Líquidas = 80k
+        # Serviços = 0 => Faturamento = 80k
+        # Compras Brutas = 50k, Dev. Compras = 10k => Compras Líquidas = 40k
+        # Despesas = Compras Líquidas (40k) + Folha (10k) = 50k
+        self.assertEqual(res["faturamento"], 80000.0)
+        self.assertEqual(res["vendasLiquidas"], 80000.0)
+        self.assertEqual(res["comprasLiquidas"], 40000.0)
+        self.assertEqual(res["despesasContabilizadas"], 50000.0)
+        # comprasPercentage = 40k / 80k = 50.0%
+        self.assertEqual(res["comprasPercentage"], 50.0)
+        # despesasPercentage = 50k / 80k = 62.5%
+        self.assertEqual(res["despesasPercentage"], 62.5)
+
+        # 3. Test calculate_risk_from_values
+        res_values = calculate_risk_from_values(
+            vendas=100000.0,
+            compras=50000.0,
+            servicos_prestados=0.0,
+            servicos_tomados=0.0,
+            folha_pagamento=10000.0,
+            outras_receitas=0.0,
+            outras_despesas=0.0,
+            devolucoes_vendas=20000.0,
+            devolucoes_compras=10000.0
+        )
+        self.assertEqual(res_values["faturamento"], 80000.0)
+        self.assertEqual(res_values["comprasLiquidas"], 40000.0)
+        self.assertEqual(res_values["comprasPercentage"], 50.0)
+
 if __name__ == "__main__":
     unittest.main()

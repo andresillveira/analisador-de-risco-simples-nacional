@@ -146,7 +146,7 @@ def extract_and_normalize_cfop(cell_value: str) -> Optional[str]:
     return None
 
 def classify_cfop_row(cfop_code: str, val: float, report_type: str) -> Dict[str, float]:
-    res = {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0}
+    res = {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0, "devolucoes_entrada": 0.0, "devolucoes_saida": 0.0}
     
     # Correção: CFOPs 1.128, 2.128 e 3.128 (ISSQN) entram como Outras Despesas
     if cfop_code in ["1.128", "2.128", "3.128", "1128", "2128", "3128"]:
@@ -172,6 +172,11 @@ def classify_cfop_row(cfop_code: str, val: float, report_type: str) -> Dict[str,
         
         if is_ativo_imobilizado:
             res["outras"] = val
+        elif "devol" in category_lower:
+            if tipo == "Entrada" or cfop_code.startswith(("1", "2", "3")):
+                res["devolucoes_entrada"] = val
+            elif tipo == "Saída" or cfop_code.startswith(("5", "6", "7")):
+                res["devolucoes_saida"] = val
         elif is_servico and tipo == "Saída":
             res["servicos"] = val
         # 2. Serviços Tomados (CFOP 8.000 / Serviços sob Entrada)
@@ -187,25 +192,6 @@ def classify_cfop_row(cfop_code: str, val: float, report_type: str) -> Dict[str,
         elif category in ["Transporte", "Uso ou Consumo"]:
             res["outras"] = val
         # Outras categorias como Devolução, Ativo Permanente e Transferências são ignoradas.
-    else:
-        if cfop_normalized in ["1551", "2551", "3551", "1406", "2406", "1151", "2151"]:
-            is_ativo_imobilizado = True
-            
-        if is_ativo_imobilizado:
-            res["outras"] = val
-        else:
-            # Fallback se não estiver na tabela de CFOPs
-            prefix = cfop_code.split('.')[0] if cfop_code else ""
-            if report_type == "Compras" and prefix in ["1", "2"]:
-                res["compras"] = val
-            elif report_type == "Vendas" and prefix in ["5", "6"]:
-                res["vendas"] = val
-            elif report_type == "Serviços":
-                if prefix == "9":
-                    res["servicos"] = val
-                elif prefix == "8":
-                    res["outras"] = val
-                
     return res
 
 
@@ -279,7 +265,7 @@ def parse_csv_txt(content: str, report_type: str, payroll_base: str = "custo_fun
     lines = content.splitlines()
     total = 0.0
     valid_rows = 0
-    breakdown = {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0}
+    breakdown = {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0, "devolucoes_entrada": 0.0, "devolucoes_saida": 0.0}
     
     # 1. Folha de Pagamento Report
     if report_type == "Folha de Pagamento":
@@ -762,11 +748,13 @@ def detect_report_type(file_name: str, sample_content: str) -> str:
     return "Vendas"
 
 def calculate_risk(files_data: List[Dict[str, Any]]) -> Dict[str, Any]:
-    vendas = 0.0
+    vendas_bruto = 0.0
     servicos = 0.0
-    compras = 0.0
+    compras_bruto = 0.0
     folha = 0.0
     outras = 0.0
+    devolucoes_entrada = 0.0
+    devolucoes_saida = 0.0
     
     has_vendas = False
     has_servicos = False
@@ -778,21 +766,23 @@ def calculate_risk(files_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         ftype = f["type"]
         
         # Aggregate using breakdown dictionary if available
-        if "breakdown" in f:
+        if "breakdown" in f and f["breakdown"] is not None:
             bd = f["breakdown"]
-            compras += bd.get("compras", 0.0)
-            vendas += bd.get("vendas", 0.0)
+            compras_bruto += bd.get("compras", 0.0)
+            vendas_bruto += bd.get("vendas", 0.0)
             servicos += bd.get("servicos", 0.0)
             outras += bd.get("outras", 0.0)
             folha += bd.get("folha", 0.0)
+            devolucoes_entrada += bd.get("devolucoes_entrada", 0.0)
+            devolucoes_saida += bd.get("devolucoes_saida", 0.0)
         else:
-            total = f["detectedTotal"]
+            total = f.get("detectedTotal", 0.0)
             if ftype == "Vendas":
-                vendas += total
+                vendas_bruto += total
             elif ftype == "Serviços":
                 servicos += total
             elif ftype == "Compras":
-                compras += total
+                compras_bruto += total
             elif ftype == "Folha de Pagamento":
                 folha += total
             elif ftype == "Outras Despesas":
@@ -809,10 +799,13 @@ def calculate_risk(files_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         elif ftype == "Outras Despesas":
             has_outras = True
             
-    faturamento = vendas + servicos
-    despesas = compras + folha + outras
+    vendas_liquidas = max(0.0, vendas_bruto - devolucoes_entrada)
+    compras_liquidas = max(0.0, compras_bruto - devolucoes_saida)
     
-    compras_percentage = (compras / faturamento) * 100 if faturamento > 0 else 0.0
+    faturamento = vendas_liquidas + servicos
+    despesas = compras_liquidas + folha + outras
+    
+    compras_percentage = (compras_liquidas / faturamento) * 100 if faturamento > 0 else 0.0
     inciso_x_exceeded = compras_percentage > 80
     
     despesas_percentage = (despesas / faturamento) * 100 if faturamento > 0 else 0.0
@@ -857,9 +850,13 @@ def calculate_risk(files_data: List[Dict[str, Any]]) -> Dict[str, Any]:
         
     return {
         "faturamento": round(faturamento, 2),
-        "vendasContabilizadas": round(vendas, 2),
+        "vendasContabilizadas": round(vendas_bruto, 2),
+        "devolucoesVendas": round(devolucoes_entrada, 2),
+        "vendasLiquidas": round(vendas_liquidas, 2),
         "servicosCfopContabilizados": round(servicos, 2),
-        "comprasContabilizadas": round(compras, 2),
+        "comprasContabilizadas": round(compras_bruto, 2),
+        "devolucoesCompras": round(devolucoes_saida, 2),
+        "comprasLiquidas": round(compras_liquidas, 2),
         "despesasContabilizadas": round(despesas, 2),
         "folhaPagamentoContabilizada": round(folha, 2),
         "outrasDespesasContabilizadas": round(outras, 2),
@@ -954,13 +951,18 @@ def calculate_risk_from_values(
     servicos_tomados: float,
     folha_pagamento: float,
     outras_receitas: float,
-    outras_despesas: float
+    outras_despesas: float,
+    devolucoes_vendas: float = 0.0,
+    devolucoes_compras: float = 0.0
 ) -> Dict[str, Any]:
     # Calculate faturamento and despesas
-    faturamento = vendas + servicos_prestados + outras_receitas
-    despesas = compras + folha_pagamento + servicos_tomados + outras_despesas
+    vendas_liquidas = max(0.0, vendas - devolucoes_vendas)
+    compras_liquidas = max(0.0, compras - devolucoes_compras)
     
-    compras_percentage = (compras / faturamento) * 100 if faturamento > 0 else 0.0
+    faturamento = vendas_liquidas + servicos_prestados + outras_receitas
+    despesas = compras_liquidas + folha_pagamento + servicos_tomados + outras_despesas
+    
+    compras_percentage = (compras_liquidas / faturamento) * 100 if faturamento > 0 else 0.0
     inciso_x_exceeded = compras_percentage > 80
     
     despesas_percentage = (despesas / faturamento) * 100 if faturamento > 0 else 0.0
@@ -1012,8 +1014,12 @@ def calculate_risk_from_values(
     return {
         "faturamento": round(faturamento, 2),
         "vendasContabilizadas": round(vendas, 2),
+        "devolucoesVendas": round(devolucoes_vendas, 2),
+        "vendasLiquidas": round(vendas_liquidas, 2),
         "servicosCfopContabilizados": round(servicos_prestados, 2),
         "comprasContabilizadas": round(compras, 2),
+        "devolucoesCompras": round(devolucoes_compras, 2),
+        "comprasLiquidas": round(compras_liquidas, 2),
         "despesasContabilizadas": round(despesas, 2),
         "folhaPagamentoContabilizada": round(folha_pagamento, 2),
         "outrasDespesasContabilizadas": round(servicos_tomados + outras_despesas, 2),

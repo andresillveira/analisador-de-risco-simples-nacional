@@ -48,6 +48,8 @@ export default function ManualValuesEditor({
   const [folhaPagamento, setFolhaPagamento] = useState(0);
   const [outrasReceitas, setOutrasReceitas] = useState(0);
   const [outrasDespesas, setOutrasDespesas] = useState(0);
+  const [devolucoesVendas, setDevolucoesVendas] = useState(0);
+  const [devolucoesCompras, setDevolucoesCompras] = useState(0);
 
   // Sync state when currentManualValues changes
   useEffect(() => {
@@ -60,6 +62,8 @@ export default function ManualValuesEditor({
       setFolhaPagamento(currentManualValues.folha_pagamento ?? 0);
       setOutrasReceitas(currentManualValues.outras_receitas ?? 0);
       setOutrasDespesas(currentManualValues.outras_despesas ?? 0);
+      setDevolucoesVendas(currentManualValues.devolucoes_vendas ?? 0);
+      setDevolucoesCompras(currentManualValues.devolucoes_compras ?? 0);
     } else {
       setIsManualMode(false);
       clearForm();
@@ -74,6 +78,8 @@ export default function ManualValuesEditor({
     setFolhaPagamento(0);
     setOutrasReceitas(0);
     setOutrasDespesas(0);
+    setDevolucoesVendas(0);
+    setDevolucoesCompras(0);
   };
 
   // Currency Formatter & Parser
@@ -105,6 +111,8 @@ export default function ManualValuesEditor({
     let aggFolha = 0;
     let aggOutrasReceitas = 0;
     let aggOutrasDespesas = 0;
+    let aggDevolucoesVendas = 0;
+    let aggDevolucoesCompras = 0;
 
     importedFiles.forEach(f => {
       const isServiceFile = 
@@ -132,6 +140,8 @@ export default function ManualValuesEditor({
         aggCompras += f.breakdown.compras ?? 0;
         aggVendas += f.breakdown.vendas ?? 0;
         aggServicosPrestados += f.breakdown.servicos ?? 0;
+        aggDevolucoesVendas += f.breakdown.devolucoes_entrada ?? 0;
+        aggDevolucoesCompras += f.breakdown.devolucoes_saida ?? 0;
         
         // If it's a services file (like an ISS report or a file explicitly mapped to services),
         // breakdown.outras (CFOP 8.000) represents Serviços Tomados.
@@ -174,6 +184,8 @@ export default function ManualValuesEditor({
     setFolhaPagamento(aggFolha);
     setOutrasReceitas(aggOutrasReceitas);
     setOutrasDespesas(aggOutrasDespesas);
+    setDevolucoesVendas(aggDevolucoesVendas);
+    setDevolucoesCompras(aggDevolucoesCompras);
   };
 
   // Submit Handler
@@ -189,6 +201,8 @@ export default function ManualValuesEditor({
       folha_pagamento: folhaPagamento,
       outras_receitas: outrasReceitas,
       outras_despesas: outrasDespesas,
+      devolucoes_vendas: devolucoesVendas,
+      devolucoes_compras: devolucoesCompras,
       is_manual: isManualMode
     };
     await onSave(payload);
@@ -257,14 +271,14 @@ export default function ManualValuesEditor({
         <div className={`grid grid-cols-1 gap-3.5 transition-all duration-300 ${isManualMode ? "opacity-100 max-h-[1000px] pointer-events-auto" : "opacity-40 max-h-[150px] overflow-hidden pointer-events-none select-none"}`}>
           
           <div className="border-t border-slate-100 pt-3">
-            <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest block mb-2 font-mono flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> Faturamento / Receitas
+            <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest block mb-2 font-mono flex items-center gap-1.5">
+              <TrendingUp className="w-3 h-3" /> Faturamento / Receitas (Abatimento Cruzado de Devoluções)
             </span>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               {/* Vendas */}
               <div>
                 <label className="block text-[9px] uppercase font-bold text-slate-400 mb-1">
-                  Vendas (Faturamento)
+                  Vendas (Brutas)
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
@@ -276,6 +290,25 @@ export default function ManualValuesEditor({
                     value={formatBRL(vendas).replace("R$", "").trim()}
                     onChange={(e) => handleInputChange(setVendas, e.target.value)}
                     className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-md pl-8 pr-2 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white font-mono text-right"
+                  />
+                </div>
+              </div>
+
+              {/* Devoluções de Vendas */}
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-rose-500 mb-1">
+                  (-) Dev. Vendas (Entradas)
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                    <span className="text-[10px] font-bold text-rose-400 font-mono">R$</span>
+                  </div>
+                  <input
+                    type="text"
+                    disabled={!isManualMode}
+                    value={formatBRL(devolucoesVendas).replace("R$", "").trim()}
+                    onChange={(e) => handleInputChange(setDevolucoesVendas, e.target.value)}
+                    className="w-full text-xs font-semibold bg-rose-50/30 border border-rose-200/50 rounded-md pl-8 pr-2 py-1.5 text-rose-700 focus:outline-none focus:ring-1 focus:ring-rose-500 focus:bg-white font-mono text-right"
                   />
                 </div>
               </div>
@@ -321,14 +354,14 @@ export default function ManualValuesEditor({
           </div>
 
           <div className="border-t border-slate-100 pt-3">
-            <span className="text-[9px] font-bold text-rose-600 uppercase tracking-widest block mb-2 font-mono flex items-center gap-1">
-              <TrendingDown className="w-3 h-3" /> Custos e Despesas
+            <span className="text-[9px] font-bold text-rose-600 uppercase tracking-widest block mb-2 font-mono flex items-center gap-1.5">
+              <TrendingDown className="w-3 h-3" /> Custos e Despesas (Compensação de Devoluções)
             </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
               {/* Compras */}
               <div>
                 <label className="block text-[9px] uppercase font-bold text-slate-400 mb-1">
-                  Compras (Mercadorias/Insumos)
+                  Compras (Brutas)
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
@@ -340,6 +373,25 @@ export default function ManualValuesEditor({
                     value={formatBRL(compras).replace("R$", "").trim()}
                     onChange={(e) => handleInputChange(setCompras, e.target.value)}
                     className="w-full text-xs font-semibold bg-slate-50 border border-slate-200 rounded-md pl-8 pr-2 py-1.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:bg-white font-mono text-right"
+                  />
+                </div>
+              </div>
+
+              {/* Devoluções de Compras */}
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-rose-500 mb-1">
+                  (-) Dev. Compras (Saídas)
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                    <span className="text-[10px] font-bold text-rose-400 font-mono">R$</span>
+                  </div>
+                  <input
+                    type="text"
+                    disabled={!isManualMode}
+                    value={formatBRL(devolucoesCompras).replace("R$", "").trim()}
+                    onChange={(e) => handleInputChange(setDevolucoesCompras, e.target.value)}
+                    className="w-full text-xs font-semibold bg-rose-50/30 border border-rose-200/50 rounded-md pl-8 pr-2 py-1.5 text-rose-700 focus:outline-none focus:ring-1 focus:ring-rose-500 focus:bg-white font-mono text-right"
                   />
                 </div>
               </div>

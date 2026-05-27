@@ -220,13 +220,15 @@ A aplicação carrega dinamicamente mais de 300 códigos CFOP mapeados de acordo
 
 | Grupo de CFOP | Categoria Classificada | Influência nos Indicadores |
 | :--- | :--- | :--- |
-| **Iniciados em 5, 6** (Exceto Serviços) | Vendas | Incrementa Receitas / Faturamento. |
+| **Iniciados em 5, 6** (Exceto Serviços) | Vendas | Incrementa Receitas / Faturamento Bruto de Vendas. |
 | **CFOP 9.xxx** (ou sob categoria de Saída de Serviço) | Serviços Prestados | Incrementa Receitas / Faturamento. |
 | **CFOPs de Compras** (ex: `1.102`, `2.102`, `1.403`) | Compras | Base de cálculo do **Inciso X** (Limite de 80%). |
 | **CFOP 8.xxx** (ou Entrada de Serviços) | Serviços Tomados | Computado como Outras Despesas no **Inciso IX**. |
 | **CFOPs de Uso e Consumo / Fretes** (ex: `1.556`, `2.352`) | Transporte / Consumo | Computado como Outras Despesas no **Inciso IX**. |
 | **CFOPs de Ativo Imobilizado (Aquisição)** (ex: `1.551`, `2.551`, `1.406`, `2.151`) | Ativo Imobilizado | **Cenário 2 (Inciso IX):** Computado como Outras Despesas. **Cenário 1 (Inciso X):** Totalmente desconsiderado (isolado). |
-| **Devoluções / Transferências / Outros** (ex: `1.202`, `1.552`) | Desconsiderados | Ignorados em ambos os limites (não afetam as contas para evitar distorções). |
+| **Devoluções de Venda (Entradas)** (ex: `1.202`, `2.202`) | Devolução de Venda | **Redutor de Vendas:** Subtraído das Vendas para obter as Vendas Líquidas. |
+| **Devoluções de Compra (Saídas)** (ex: `5.201`, `6.201`) | Devolução de Compra | **Redutor de Compras:** Subtraído das Compras para obter as Compras Líquidas. |
+| **Transferências / Outros** (ex: `1.552`, `5.552`) | Desconsiderados | Ignorados em ambos os limites (não afetam as contas para evitar distorções). |
 
 ### Heurística de Tratamento Financeiro
 O parser usa a função `clean_and_parse_float` do módulo `text_utils.py` que executa limpeza agressiva de strings por meio de expressões regulares:
@@ -313,6 +315,15 @@ Em Maio de 2026, a aplicação passou por uma refatoração estrutural crítica 
   2. **Refatoração do Detector de CSV**: Ajustamos a detecção automática de CSV (`is_csv`) para buscar apenas delimitadores explícitos (`;`, `|`, `\t`), neutralizando falsos positivos causados por vírgulas de centavos no padrão monetário brasileiro.
   3. **Extração Otimizada de PDF**: Simplificamos o `parse_pdf` para ler e unir textualmente todas as páginas em uma string de texto contínua antes de delegar à lógica unificada do `parse_csv_txt`, eliminando redundâncias.
   4. **Paridade de Dados de 100%**: Criamos o script de validação cruzada `scratch/verify_parity_all.py` que demonstrou conformidade centavo por centavo em todos os relatórios de exemplo de Compras, Vendas, Serviços Prestados e Serviços Tomados, além de mantermos todos os testes automatizados com sucesso.
+
+---
+
+### I. Lógica de Abatimento Cruzado de Devoluções (Nova Regra de Negócio)
+- **O Problema**: A avaliação de faturamento e despesas ocorria sob valores brutos de vendas e compras isolados, desconsiderando o impacto de devoluções tributárias. Isso gerava distorções nas métricas do Art. 29 da LC 123/2006.
+- **A Solução**:
+  1. **Motor de Cálculo Ajustado**: Atualizamos o motor de cálculo (`risk_service.py` e monolito `app.py`) para capturar dinamicamente devoluções identificando a palavra-chave `"devol"` (case-insensitive) no nome da categoria fiscal.
+  2. **Abatimento Dinâmico**: Classificamos devoluções de entrada como dedutoras de vendas e devoluções de saída como dedutoras de compras. O sistema agora computa as vendas líquidas ($Vendas Líquidas = Vendas - Devoluções (Entradas)$) e compras líquidas ($Compras Líquidas = Compras - Devoluções (Saídas)$) e repassa esses valores consolidados para a avaliação das regras de risco e limites de 80% (Inciso X) e 120% (Inciso IX).
+  3. **Visualização e Simulação Transparente**: Modificamos os cards de status e gráficos no React para exibir a matemática detalhada ($Bruto - Devoluções = Líquido$) e incluímos as devoluções nas ferramentas de simulação manual e relatório de impressão física.
 
 ---
 

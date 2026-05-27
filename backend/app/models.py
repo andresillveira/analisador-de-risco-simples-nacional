@@ -7,6 +7,8 @@ class FileBreakdown(BaseModel):
     servicos: float = 0.0
     outras: float = 0.0
     folha: float = 0.0
+    devolucoes_entrada: float = 0.0
+    devolucoes_saida: float = 0.0
 
 class FileItemModel(BaseModel):
     id: str
@@ -23,8 +25,12 @@ class FileItemModel(BaseModel):
 class AnalysisResultsModel(BaseModel):
     faturamento: float = 0.0
     vendasContabilizadas: float = 0.0
+    devolucoesVendas: float = 0.0
+    vendasLiquidas: float = 0.0
     servicosCfopContabilizados: float = 0.0
     comprasContabilizadas: float = 0.0
+    devolucoesCompras: float = 0.0
+    comprasLiquidas: float = 0.0
     despesasContabilizadas: float = 0.0
     folhaPagamentoContabilizada: float = 0.0
     outrasDespesasContabilizadas: float = 0.0
@@ -70,4 +76,6 @@ class ManualValuesModel(BaseModel):
     folha_pagamento: float = 0.0
     outras_receitas: float = 0.0
     outras_despesas: float = 0.0
+    devolucoes_vendas: float = 0.0
+    devolucoes_compras: float = 0.0
     is_manual: bool = True

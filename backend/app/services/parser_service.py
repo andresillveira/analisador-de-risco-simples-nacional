@@ -79,7 +79,7 @@ def parse_csv_txt(content: str, report_type: str, payroll_base: str = "custo_fun
     lines = content.splitlines()
     total = 0.0
     valid_rows = 0
-    breakdown = {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0}
+    breakdown = {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0, "devolucoes_entrada": 0.0, "devolucoes_saida": 0.0}
     
     # 1. Folha de Pagamento Report
     if report_type == "Folha de Pagamento":

@@ -39,7 +39,7 @@ import ManualValuesEditor from "./components/ManualValuesEditor";
 const areBreakdownsEqual = (b1?: any, b2?: any) => {
   if (!b1 && !b2) return true;
   if (!b1 || !b2) return false;
-  const keys = ["compras", "vendas", "servicos", "outras", "folha"] as const;
+  const keys = ["compras", "vendas", "servicos", "outras", "folha", "devolucoes_entrada", "devolucoes_saida"] as const;
   return keys.every(k => Math.abs((b1[k] ?? 0) - (b2[k] ?? 0)) < 0.01);
 };
 
@@ -236,7 +236,7 @@ export default function App() {
             if (matches.length > 0) {
               let totalRowCount = 0;
               let totalDetected = 0;
-              const aggBreakdown = { compras: 0, vendas: 0, servicos: 0, outras: 0, folha: 0 };
+              const aggBreakdown = { compras: 0, vendas: 0, servicos: 0, outras: 0, folha: 0, devolucoes_entrada: 0, devolucoes_saida: 0 };
               let matchedContent = "";
               let detectedType = f.type;
               const isManual = f.isTypeManuallySelected;
@@ -253,6 +253,8 @@ export default function App() {
                   aggBreakdown.servicos += pf.breakdown.servicos ?? 0;
                   aggBreakdown.outras += pf.breakdown.outras ?? 0;
                   aggBreakdown.folha += pf.breakdown.folha ?? 0;
+                  aggBreakdown.devolucoes_entrada += pf.breakdown.devolucoes_entrada ?? 0;
+                  aggBreakdown.devolucoes_saida += pf.breakdown.devolucoes_saida ?? 0;
                 }
                 if (pf.type && !isManual) {
                   detectedType = pf.type;
@@ -407,7 +409,7 @@ export default function App() {
             if (matches.length > 0) {
               let totalRowCount = 0;
               let totalDetected = 0;
-              const aggBreakdown = { compras: 0, vendas: 0, servicos: 0, outras: 0, folha: 0 };
+              const aggBreakdown = { compras: 0, vendas: 0, servicos: 0, outras: 0, folha: 0, devolucoes_entrada: 0, devolucoes_saida: 0 };
               let matchedContent = "";
               let detectedType = f.type;
               const isManual = f.isTypeManuallySelected;
@@ -424,6 +426,8 @@ export default function App() {
                   aggBreakdown.servicos += pf.breakdown.servicos ?? 0;
                   aggBreakdown.outras += pf.breakdown.outras ?? 0;
                   aggBreakdown.folha += pf.breakdown.folha ?? 0;
+                  aggBreakdown.devolucoes_entrada += pf.breakdown.devolucoes_entrada ?? 0;
+                  aggBreakdown.devolucoes_saida += pf.breakdown.devolucoes_saida ?? 0;
                 }
                 if (pf.type && !isManual) {
                   detectedType = pf.type;
