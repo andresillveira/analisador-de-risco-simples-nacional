@@ -100,9 +100,9 @@ def run_tests():
     print(f"    Detected Total: {parsed_entradas['total']}")
     print(f"    Breakdown: {parsed_entradas['breakdown']}")
     # 1.102: 24316.26, 1.403: 61584.39, 2.102: 8154.74 -> Sum = 94055.39 Compras
-    # 1.353: 40.00, 1.407: 811.24 -> Sum = 851.24 Outras Despesas
+    # 1.353: 40.00, 1.407: 811.24, 1.551 (Ativo Imobilizado): 3826.06 -> Sum = 4677.30 Outras Despesas
     assert abs(parsed_entradas['breakdown']['compras'] - 94055.39) < 0.01, f"Expected 94055.39 Compras, got {parsed_entradas['breakdown']['compras']}"
-    assert abs(parsed_entradas['breakdown']['outras'] - 851.24) < 0.01, f"Expected 851.24 Outras Despesas, got {parsed_entradas['breakdown']['outras']}"
+    assert abs(parsed_entradas['breakdown']['outras'] - 4677.30) < 0.01, f"Expected 4677.30 Outras Despesas, got {parsed_entradas['breakdown']['outras']}"
     print("    => SUCCESS!\n")
     
     # Part 2: Saídas (Vendas)

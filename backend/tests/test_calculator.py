@@ -17,6 +17,7 @@ clean_and_parse_float = app_monolithic.clean_and_parse_float
 calculate_risk = app_monolithic.calculate_risk
 detect_report_type = app_monolithic.detect_report_type
 calculate_risk_from_values = app_monolithic.calculate_risk_from_values
+classify_cfop_row = app_monolithic.classify_cfop_row
 
 class TestTaxCalculator(unittest.TestCase):
     
@@ -121,6 +122,31 @@ class TestTaxCalculator(unittest.TestCase):
         )
         self.assertEqual(res_ix["statusIX"], "Risco")
         self.assertTrue(res_ix["incisoIXExceeded"])
+
+    def test_ativo_imobilizado_classification(self):
+        # 1.551 and 2.551 (fixed asset acquisitions) must be classified as 'outras', NOT 'compras'
+        res_1551 = classify_cfop_row("1.551", 100.0, "Compras")
+        self.assertEqual(res_1551["outras"], 100.0)
+        self.assertEqual(res_1551["compras"], 0.0)
+        
+        res_2551 = classify_cfop_row("2.551", 200.0, "Compras")
+        self.assertEqual(res_2551["outras"], 200.0)
+        self.assertEqual(res_2551["compras"], 0.0)
+        
+        # 1.406 (fixed asset subject to ST) must be 'outras'
+        res_1406 = classify_cfop_row("1.406", 300.0, "Compras")
+        self.assertEqual(res_1406["outras"], 300.0)
+        self.assertEqual(res_1406["compras"], 0.0)
+        
+        # 2.151 (explicitly mentioned correlato example) must be 'outras'
+        res_2151 = classify_cfop_row("2.151", 400.0, "Compras")
+        self.assertEqual(res_2151["outras"], 400.0)
+        self.assertEqual(res_2151["compras"], 0.0)
+        
+        # Standard purchases like 1.102 must remain 'compras', NOT 'outras'
+        res_1102 = classify_cfop_row("1.102", 500.0, "Compras")
+        self.assertEqual(res_1102["compras"], 500.0)
+        self.assertEqual(res_1102["outras"], 0.0)
 
 if __name__ == "__main__":
     unittest.main()

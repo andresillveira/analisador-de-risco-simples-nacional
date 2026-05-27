@@ -10,16 +10,25 @@ def classify_cfop_row(cfop_code: str, val: float, report_type: str) -> Dict[str,
         res["outras"] = val
         return res
         
+    cfop_normalized = cfop_code.replace(".", "").strip()
+    is_ativo_imobilizado = False
+    
     info = CFOP_MAP.get(cfop_code)
     
     if info:
         category = info["categoria"]
         tipo = info["tipo"]
         
+        # Identificar se é aquisição de ativo imobilizado (Cenário 2 - Outros Custos)
+        if (category == "Ativo Permanente" and tipo == "Entrada") or cfop_normalized in ["1551", "2551", "3551", "1406", "2406", "1151", "2151"]:
+            is_ativo_imobilizado = True
+            
         category_lower = category.lower()
         is_servico = "servi" in category_lower
         
-        if is_servico and tipo == "Saída":
+        if is_ativo_imobilizado:
+            res["outras"] = val
+        elif is_servico and tipo == "Saída":
             res["servicos"] = val
         elif is_servico and tipo == "Entrada":
             res["outras"] = val
@@ -30,16 +39,22 @@ def classify_cfop_row(cfop_code: str, val: float, report_type: str) -> Dict[str,
         elif category in ["Transporte", "Uso ou Consumo"]:
             res["outras"] = val
     else:
-        prefix = cfop_code.split('.')[0] if cfop_code else ""
-        if report_type == "Compras" and prefix in ["1", "2"]:
-            res["compras"] = val
-        elif report_type == "Vendas" and prefix in ["5", "6"]:
-            res["vendas"] = val
-        elif report_type == "Serviços":
-            if prefix == "9":
-                res["servicos"] = val
-            elif prefix == "8":
-                res["outras"] = val
+        if cfop_normalized in ["1551", "2551", "3551", "1406", "2406", "1151", "2151"]:
+            is_ativo_imobilizado = True
+            
+        if is_ativo_imobilizado:
+            res["outras"] = val
+        else:
+            prefix = cfop_code.split('.')[0] if cfop_code else ""
+            if report_type == "Compras" and prefix in ["1", "2"]:
+                res["compras"] = val
+            elif report_type == "Vendas" and prefix in ["5", "6"]:
+                res["vendas"] = val
+            elif report_type == "Serviços":
+                if prefix == "9":
+                    res["servicos"] = val
+                elif prefix == "8":
+                    res["outras"] = val
                 
     return res
 
