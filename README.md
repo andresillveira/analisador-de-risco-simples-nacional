@@ -194,7 +194,8 @@ O arquivo [CFOP_Categorizado.csv](file:///D:/analisador-de-risco-simples-naciona
 | **CFOPs de Aquisição** (ex: `1.102`, `2.102`, `1.403`) | Compras de Mercadorias | Base do cálculo do **Inciso X** (Limite de 80%). |
 | **CFOPs de Consumo / Fretes** (ex: `1.556`, `2.352`) | Despesas / Consumo | Computado como despesas operacionais no **Inciso IX** (120%). |
 | **CFOPs 8.xxx** (ou Entradas de Serviços) | Serviços Tomados | Computado como despesas de terceiros no **Inciso IX** (120%). |
-| **Ativo Imobilizado / Devoluções** (ex: `1.551`, `1.202`) | Desconsiderados | Ignorados de forma a não distorcer negativamente as auditorias. |
+| **CFOPs de Ativo Imobilizado (Aquisição)** (ex: `1.551`, `2.551`, `1.406`, `2.151`) | Ativo Imobilizado | **Cenário 2 (Inciso IX):** Computado como Outras Despesas. **Cenário 1 (Inciso X):** Totalmente desconsiderado (isolado). |
+| **Devoluções / Transferências / Outros** (ex: `1.202`, `1.552`) | Desconsiderados | Ignorados em ambos os limites (não afetam as contas para evitar distorções). |
 
 ---
 
@@ -206,6 +207,7 @@ Em **Maio de 2026**, o projeto passou por uma profunda refatoração estrutural 
 *   **Correção de Gravação no Histórico:** Corrigida a persistência na gravação de auditorias para garantir que as alterações manuais ativas feitas no simulador sejam gravadas fielmente no banco local (`history.json`). O componente `<AuditHistorySection>` agora recebe a variável de estado de resultados ativos atualizados (`currentResults={activeResults}`) em vez dos resultados brutos originais do upload.
 *   **Exibição Consistente de Outras Receitas no Relatório de Impressão:** Ajustado o componente `PrintReport.tsx` para apresentar de forma condicional a linha de "↳ Outras Receitas" na tabela de receitas tributáveis, mantendo os totais de faturamento e despesas do relatório impresso 100% coerentes com a tela principal.
 *   **Solução para Colisão de Importação do Uvicorn:** Ajustada a inicialização de `backend/app.py`. A importação de pacotes internos foi isolada nos testes fiscais (`tests/test_calculator.py`) através de carregamento dinâmico com `importlib.util.spec_from_file_location`, e a inicialização local do Uvicorn foi modificada para apontar diretamente para a instância física de `app` em vez de carregar via string (`uvicorn.run(app, ...)`), garantindo boot instantâneo e estável em qualquer terminal local.
+*   **Correção na Lógica de Classificação do Ativo Imobilizado (Cenário 2):** Corrigido o bug na triagem de aquisições de ativo imobilizado (séries 1.551/2.551 e correlatos). A função `classify_cfop_row` foi ajustada para que estas entradas sejam classificadas como **Outras Despesas** no **Cenário 2 (Inciso IX - 120%)** ao invés de ignoradas, enquanto permanecem isoladas do cálculo do **Cenário 1 (Inciso X - Compras)**.
 
 ---
 

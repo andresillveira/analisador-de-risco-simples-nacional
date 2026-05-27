@@ -218,7 +218,8 @@ A aplicação carrega dinamicamente mais de 300 códigos CFOP mapeados de acordo
 | **CFOPs de Compras** (ex: `1.102`, `2.102`, `1.403`) | Compras | Base de cálculo do **Inciso X** (Limite de 80%). |
 | **CFOP 8.xxx** (ou Entrada de Serviços) | Serviços Tomados | Computado como Outras Despesas no **Inciso IX**. |
 | **CFOPs de Uso e Consumo / Fretes** (ex: `1.556`, `2.352`) | Transporte / Consumo | Computado como Outras Despesas no **Inciso IX**. |
-| **CFOPs de Ativo Imobilizado / Devoluções** (ex: `1.551`, `1.202`) | Desconsiderados | Ignorados no cálculo de limites (não afetam as contas de forma prejudicial). |
+| **CFOPs de Ativo Imobilizado (Aquisição)** (ex: `1.551`, `2.551`, `1.406`, `2.151`) | Ativo Imobilizado | **Cenário 2 (Inciso IX):** Computado como Outras Despesas. **Cenário 1 (Inciso X):** Totalmente desconsiderado (isolado). |
+| **Devoluções / Transferências / Outros** (ex: `1.202`, `1.552`) | Desconsiderados | Ignorados em ambos os limites (não afetam as contas para evitar distorções). |
 
 ### Heurística de Tratamento Financeiro
 O parser usa a função `clean_and_parse_float` do módulo `text_utils.py` que executa limpeza agressiva de strings por meio de expressões regulares:
@@ -279,6 +280,10 @@ Em Maio de 2026, a aplicação passou por uma refatoração estrutural crítica 
 - **A Soluções**:
   1. **Testes Unitários**: O script `backend/tests/test_calculator.py` foi atualizado para carregar o módulo monolítico de forma encapsulada via `importlib.util.spec_from_file_location`, evitando o envenenamento e a colisão de pacotes.
   2. **Inicialização do Uvicorn**: O bloco `if __name__ == "__main__":` do `backend/app.py` foi modificado para passar o objeto FastAPI instanciado diretamente à execução: `uvicorn.run(app, host="127.0.0.1", port=8000)`. Isso removeu a dependência de strings do Uvicorn e permitiu um boot instantâneo e robusto em modo de desenvolvimento local.
+
+### E. Correção na Lógica de Classificação do Ativo Imobilizado (Cenário 2)
+- **O Problema**: As aquisições destinadas ao **Ativo Imobilizado** (ex: CFOPs da série 1.551/2.551 e correlatos) eram ignoradas no motor de risco, distorcendo o montante total de despesas e custos operacionais do Cenário 2 (Anexo IX - Limite de 120%).
+- **A Solução**: Atualizamos a função `classify_cfop_row` no backend (monolítico e serviços modulares) para detectar dinamicamente esses CFOPs e adicioná-los às **Outras Despesas** (`res["outras"]`), integrando-os ao cálculo de riscos do Inciso IX. O Cenário 1 (Inciso X - Compras de Mercadorias) permanece inalterado e isolado, mantendo a integridade matemática da auditoria.
 
 ---
 
