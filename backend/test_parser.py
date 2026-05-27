@@ -6,7 +6,7 @@ import re
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 try:
-    from app.services.parser_service import parse_csv_txt
+    from app.services.parser_service import parse_csv_txt, parse_pdf
     from app.config import CFOP_MAP
 except ImportError:
     try:
@@ -18,9 +18,9 @@ except ImportError:
         if backend_path in sys.path:
             sys.path.remove(backend_path)
         sys.path.insert(0, backend_path)
-        from app import parse_csv_txt, CFOP_MAP
+        from app import parse_csv_txt, parse_pdf, CFOP_MAP
     except ImportError:
-        from app import parse_csv_txt, CFOP_MAP
+        from app import parse_csv_txt, parse_pdf, CFOP_MAP
 
 def read_file_safely(path):
     with open(path, "rb") as f:
@@ -47,8 +47,10 @@ def run_tests():
     print(f"Examples directory found at: {exemples_dir}")
     print(f"Loaded {len(CFOP_MAP)} CFOP definitions.\n")
     
+    old_exemples_dir = os.path.join(exemples_dir, "old")
+    
     # 1. Test Folha de Pagamento 01-2026
-    folha1_path = os.path.join(exemples_dir, "AGROBORGES - FOLHA - 01-2026.csv")
+    folha1_path = os.path.join(old_exemples_dir, "AGROBORGES - FOLHA - 01-2026.csv")
     content = read_file_safely(folha1_path)
     parsed = parse_csv_txt(content, "Folha de Pagamento")
     print(f"File: {os.path.basename(folha1_path)}")
@@ -59,7 +61,7 @@ def run_tests():
     print("  => SUCCESS!\n")
 
     # 2. Test Folha de Pagamento 02-2026
-    folha2_path = os.path.join(exemples_dir, "AGROBORGES - FOLHA - 02-2026.csv")
+    folha2_path = os.path.join(old_exemples_dir, "AGROBORGES - FOLHA - 02-2026.csv")
     content = read_file_safely(folha2_path)
     parsed = parse_csv_txt(content, "Folha de Pagamento")
     print(f"File: {os.path.basename(folha2_path)}")
@@ -70,7 +72,7 @@ def run_tests():
     print("  => SUCCESS!\n")
 
     # 3. Test Folha de Pagamento 03-2026
-    folha3_path = os.path.join(exemples_dir, "AGROBORGES - FOLHA - 03-2026.csv")
+    folha3_path = os.path.join(old_exemples_dir, "AGROBORGES - FOLHA - 03-2026.csv")
     content = read_file_safely(folha3_path)
     parsed = parse_csv_txt(content, "Folha de Pagamento")
     print(f"File: {os.path.basename(folha3_path)}")
@@ -81,7 +83,7 @@ def run_tests():
     print("  => SUCCESS!\n")
 
     # 4. Test ICMS 01-2026 (Combined File with Compras and Vendas)
-    icms_path = os.path.join(exemples_dir, "AGROBORGES - ICMS - 01-2026.csv")
+    icms_path = os.path.join(old_exemples_dir, "AGROBORGES - ICMS - 01-2026.csv")
     content = read_file_safely(icms_path)
     
     # Combined files are split in app.py
@@ -116,7 +118,7 @@ def run_tests():
     print("    => SUCCESS!\n")
 
     # 5. Test ISS 01-2026 (Combined File with Tomados and Prestados)
-    iss_path = os.path.join(exemples_dir, "AGROBORGES - ISS - 01-2026.csv")
+    iss_path = os.path.join(old_exemples_dir, "AGROBORGES - ISS - 01-2026.csv")
     content = read_file_safely(iss_path)
         
     splits_iss = split_combined_file(os.path.basename(iss_path), content)
@@ -143,6 +145,40 @@ def run_tests():
     assert abs(parsed_iss_saidas['breakdown']['servicos'] - 2689.22) < 0.01, f"Expected 2689.22 Serviços, got {parsed_iss_saidas['breakdown']['servicos']}"
     print("    => SUCCESS!\n")
     
+    # 6. Test New Ficha Financeira (CSV)
+    new_csv_path = os.path.join(exemples_dir, "Agroborges - Folha - 01-2026 (Ficha Financeira).csv")
+    content = read_file_safely(new_csv_path)
+    parsed_new_csv = parse_csv_txt(content, "Folha de Pagamento")
+    print(f"File: {os.path.basename(new_csv_path)}")
+    print(f"  Detected Total: {parsed_new_csv['total']}")
+    print(f"  Company Name: {parsed_new_csv['company_name']}")
+    assert abs(parsed_new_csv['total'] - 49641.72) < 0.01, f"Expected 49641.72, got {parsed_new_csv['total']}"
+    assert parsed_new_csv['company_name'] == "AGROBORGES", f"Expected AGROBORGES, got {parsed_new_csv['company_name']}"
+    print("  => SUCCESS!\n")
+
+    # 7. Test New Ficha Financeira (TXT)
+    new_txt_path = os.path.join(exemples_dir, "Agroborges - Folha - 01-2026 (Ficha Financeira).txt")
+    content = read_file_safely(new_txt_path)
+    parsed_new_txt = parse_csv_txt(content, "Folha de Pagamento")
+    print(f"File: {os.path.basename(new_txt_path)}")
+    print(f"  Detected Total: {parsed_new_txt['total']}")
+    print(f"  Company Name: {parsed_new_txt['company_name']}")
+    assert abs(parsed_new_txt['total'] - 49641.72) < 0.01, f"Expected 49641.72, got {parsed_new_txt['total']}"
+    assert parsed_new_txt['company_name'] == "AGROBORGES", f"Expected AGROBORGES, got {parsed_new_txt['company_name']}"
+    print("  => SUCCESS!\n")
+
+    # 8. Test New Ficha Financeira (PDF)
+    new_pdf_path = os.path.join(exemples_dir, "Agroborges - Folha - 01-2026 (Ficha Financeira).pdf")
+    with open(new_pdf_path, "rb") as f:
+        pdf_bytes = f.read()
+    parsed_new_pdf = parse_pdf(pdf_bytes, "Folha de Pagamento")
+    print(f"File: {os.path.basename(new_pdf_path)}")
+    print(f"  Detected Total: {parsed_new_pdf['total']}")
+    print(f"  Company Name: {parsed_new_pdf['company_name']}")
+    assert abs(parsed_new_pdf['total'] - 49641.72) < 0.01, f"Expected 49641.72, got {parsed_new_pdf['total']}"
+    assert parsed_new_pdf['company_name'] == "AGROBORGES", f"Expected AGROBORGES, got {parsed_new_pdf['company_name']}"
+    print("  => SUCCESS!\n")
+
     print("=== ALL PARSER TESTS PASSED FLAWLESSLY! ===")
 
 if __name__ == "__main__":

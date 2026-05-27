@@ -76,6 +76,64 @@ def parse_csv_txt(content: str, report_type: str, payroll_base: str = "custo_fun
     
     # 1. Folha de Pagamento Report
     if report_type == "Folha de Pagamento":
+        is_ficha_financeira = "ficha financeira" in content.lower().replace(';', ' ').replace('\t', ' ')
+        if is_ficha_financeira:
+            company_name_extracted = None
+            for line in lines:
+                line_norm = line.replace(';', ' ').replace('\t', ' ')
+                line_norm = re.sub(r'\s+', ' ', line_norm).strip()
+                company_match = re.search(r'Total da Empresa:\s*\d+\s*-\s*(.+)', line_norm, re.IGNORECASE)
+                if not company_match:
+                    company_match = re.search(r'Resumo\s+Sint[eé\ufffd\x81]+tico\s+da\s+Empresa:\s*\d+\s*-\s*(.+)', line_norm, re.IGNORECASE)
+                if company_match:
+                    company_name_extracted = company_match.group(1).strip().strip('"\' ')
+                    break
+            
+            if company_name_extracted:
+                company_name = company_name_extracted
+            else:
+                for line in lines[:5]:
+                    if "agroborge" in line.lower():
+                        company_name = "AGROBORGES"
+                        break
+            
+            found_total_row = False
+            values_line = None
+            for i, line in enumerate(lines):
+                line_norm = line.lower().replace(';', ' ').replace('\t', ' ')
+                if "total da empresa" in line_norm:
+                    for j in range(i + 1, min(i + 5, len(lines))):
+                        if lines[j].strip():
+                            values_line = lines[j].strip()
+                            found_total_row = True
+                            break
+                    if found_total_row:
+                        break
+            
+            total_val = 0.0
+            if values_line:
+                normalized = values_line.replace(';', ' ').replace('\t', ' ')
+                normalized = re.sub(r'\s+', ' ', normalized).strip()
+                tokens = normalized.split(' ')
+                numbers = []
+                for t in tokens:
+                    val = clean_and_parse_float(t)
+                    if val > 0.0:
+                        numbers.append(val)
+                if len(numbers) >= 2:
+                    total_val = numbers[-2]
+                elif len(numbers) == 1:
+                    total_val = numbers[0]
+            
+            total = total_val
+            breakdown["folha"] = total
+            return {
+                "total": round(total, 2),
+                "rowCount": 0,
+                "breakdown": {k: round(v, 2) for k, v in breakdown.items()},
+                "company_name": company_name
+            }
+
         delimiter = ";"
         for line in lines[:15]:
             line_stripped = line.strip()

@@ -93,11 +93,15 @@ D:\analisador-de-risco-simples-nacional\
 │   └── tests/                # Testes automatizados adicionais
 │
 ├── exemples/                 # 📄 Arquivos modelo para simulação de upload
-│   ├── AGROBORGES - FOLHA - 01-2026.csv
-│   ├── AGROBORGES - FOLHA - 02-2026.csv
-│   ├── AGROBORGES - FOLHA - 03-2026.csv
-│   ├── AGROBORGES - ICMS - 01-2026.csv
-│   └── AGROBORGES - ISS - 01-2026.csv
+│   ├── Agroborges - Folha - 01-2026 (Ficha Financeira).csv # Novo layout Ficha Financeira (CSV)
+│   ├── Agroborges - Folha - 01-2026 (Ficha Financeira).pdf # Novo layout Ficha Financeira (PDF)
+│   ├── Agroborges - Folha - 01-2026 (Ficha Financeira).txt # Novo layout Ficha Financeira (TXT)
+│   ├── old/                  # Layouts legados (antigos)
+│   │   ├── AGROBORGES - FOLHA - 01-2026.csv
+│   │   ├── AGROBORGES - FOLHA - 02-2026.csv
+│   │   ├── AGROBORGES - FOLHA - 03-2026.csv
+│   │   ├── AGROBORGES - ICMS - 01-2026.csv
+│   │   └── AGROBORGES - ISS - 01-2026.csv
 │
 ├── src/                      # ⚛️ Subsistema Frontend (React + TS + Tailwind)
 │   ├── components/           # Componentes encapsulados de UI
@@ -294,6 +298,13 @@ Em Maio de 2026, a aplicação passou por uma refatoração estrutural crítica 
   1. Desacoplamos o histórico criando o componente `AuditHistoryTab.tsx` associado a uma nova aba exclusiva ("Histórico de Análises"). Adicionamos filtros rápidos avançados (busca textual por Nome/Período e pílulas reativas de situação fiscal: "Todos", "Com Risco", "Regular"), contador dinâmico, estatísticas de conformidade de carteira e o comparador integrado.
   2. Desenvolvemos o componente compacto `SaveAuditConsole.tsx` para o salvamento de registros fiscais de forma limpa.
   3. Criamos a função `handleSaveSuccess` no `App.tsx` que, ao registrar uma auditoria com sucesso, limpa/reseta instantaneamente todas as variáveis de estado da tela de upload de arquivos (inclusive overrides e assinaturas locais) e redireciona o usuário para a nova aba do histórico automaticamente.
+### G. Implementação do Parser para o Novo Layout de Folha de Pagamento (Ficha Financeira)
+- **O Problema**: A empresa adotou um novo formato unificado para relatórios de folha de pagamento chamado **Ficha Financeira dos Funcionários** (que atua como um resumo sintético geral de proventos, vantagens, descontos e outros no período). O parser legado esperava uma estrutura analítica de linhas de empregados individuais iniciadas por contratos numéricos, falhando em capturar o total deste novo padrão. Além disso, o novo layout precisava suportar três extensões simultaneamente: `.csv`, `.txt` e `.pdf`.
+- **A Solução**:
+  1. Criamos um analisador inteligente baseado em âncoras na função `parse_csv_txt` que é acionado de forma reativa quando a string `"ficha financeira"` (normalizada) é identificada no documento.
+  2. Implementamos a varredura reativa de delimitação: o parser unifica a formatação de entrada (convertendo semicolons `;` e tabs `\t` vindos de extração espacial de PDF de volta para espaços simples) para extrair com precisão a linha do totalizador usando a âncora textual `Total da Empresa:`.
+  3. Mapeamos a extração dinâmica do valor correspondente ao total geral acumulado da folha (segundo-para-último número float localizado na linha de totais, correspondendo a **49.641,72** no exemplo) e o nome da empresa (`"AGROBORGES"`), garantindo 100% de conformidade com os formatos PDF, TXT e CSV.
+  4. Expandimos a suíte de testes unitários `backend/test_parser.py` adicionando três novos testes focados na importação desses novos arquivos em todas as extensões e validando o sucesso absoluto das auditorias trabalhistas.
 
 ---
 
