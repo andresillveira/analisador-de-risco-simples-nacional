@@ -230,9 +230,16 @@ def extract_company_name_from_text(content: str) -> Optional[str]:
         elif "\t" in line_stripped:
             parts = [p.strip() for p in line_stripped.split("\t")]
         else:
-            parts = [line_stripped]
+            parts = [p.strip() for p in re.split(r'\s{2,}', line_stripped) if p.strip()]
             
-        first_cell = parts[0] if parts else ""
+        if not parts:
+            continue
+            
+        first_cell = parts[0]
+        # Se for apenas número (ex ID da empresa), pega a próxima parte
+        if re.match(r'^\d+$', first_cell) and len(parts) > 1:
+            first_cell = parts[1]
+            
         first_cell = first_cell.strip('"\' ')
         
         # Remover prefixo numérico (ex: "0513-AGROBORGES" -> "AGROBORGES")
@@ -464,103 +471,153 @@ def parse_csv_txt(content: str, report_type: str, payroll_base: str = "custo_fun
         return {"total": round(total, 2), "rowCount": valid_rows, "breakdown": {k: round(v, 2) for k, v in breakdown.items()}, "company_name": company_name}
         
     # 2. General Fiscal reports (ICMS, ISS, Outras Despesas)
-    # First, let's scan for a header column named "vlr contabil", "vlr cont", "valor contabil", etc.
-    target_column_index = -1
-    for i in range(min(len(lines), 15)):
-        line = lines[i].strip()
-        if not line:
-            continue
-        parts = [p.lower() for p in split_csv_line(line)]
-        
-        # Check for header
-        for j, p in enumerate(parts):
-            if "contábil" in p or "contabil" in p or "vlr cont" in p or "vlr_cont" in p or "valor cont" in p:
-                target_column_index = j
+    is_csv = ";" in content or "|" in content or "\t" in content
+    
+    if is_csv:
+        target_column_index = -1
+        for i in range(min(len(lines), 15)):
+            line = lines[i].strip()
+            if not line:
+                continue
+            parts = [p.lower() for p in split_csv_line(line)]
+            
+            for j, p in enumerate(parts):
+                if "contábil" in p or "contabil" in p or "vlr cont" in p or "vlr_cont" in p or "valor contabil" in p or "valor cont" in p:
+                    target_column_index = j
+                    break
+            if target_column_index != -1:
                 break
-        if target_column_index != -1:
-            break
+                
+        for line in lines:
+            line_str = line.strip()
+            if not line_str:
+                continue
+                
+            lower_line = line_str.lower()
             
-    # Parse data rows
-    for line in lines:
-        line_str = line.strip()
-        if not line_str:
-            continue
+            if (lower_line.startswith("____") or 
+                lower_line.startswith("====") or 
+                lower_line.startswith("----") or 
+                "pg:" in lower_line or 
+                "pag:" in lower_line or 
+                "pág:" in lower_line or 
+                "data de emit" in lower_line or 
+                "emissão:" in lower_line or 
+                "cnpj:" in lower_line or 
+                "razão social" in lower_line or 
+                "razao social" in lower_line or 
+                "período:" in lower_line or 
+                "periodo:" in lower_line or 
+                "competência:" in lower_line or 
+                "competencia:" in lower_line or 
+                "relatorio" in lower_line or 
+                "relatório" in lower_line or 
+                "natureza" in lower_line or
+                "total" in lower_line or 
+                "totais" in lower_line or
+                "subtotal" in lower_line or 
+                "soma" in lower_line or 
+                "resumo" in lower_line or 
+                lower_line.startswith("***")):
+                continue
+                
+            parts = split_csv_line(line_str)
+            if not parts:
+                continue
+                
+            parts = [p.strip() for p in parts]
             
-        lower_line = line_str.lower()
-        
-        # Skip general header/footer lines and lines starting with Totais
-        if (lower_line.startswith("____") or 
-            lower_line.startswith("====") or 
-            lower_line.startswith("----") or 
-            "pg:" in lower_line or 
-            "pag:" in lower_line or 
-            "pág:" in lower_line or 
-            "data de emit" in lower_line or 
-            "emissão:" in lower_line or 
-            "cnpj:" in lower_line or 
-            "razão social" in lower_line or 
-            "razao social" in lower_line or 
-            "período:" in lower_line or 
-            "periodo:" in lower_line or 
-            "competência:" in lower_line or 
-            "competencia:" in lower_line or 
-            "relatorio" in lower_line or 
-            "relatório" in lower_line or 
-            "natureza" in lower_line or
-            "total" in lower_line or 
-            "totais" in lower_line or
-            "subtotal" in lower_line or 
-            "soma" in lower_line or 
-            "resumo" in lower_line or 
-            lower_line.startswith("***")):
-            continue
+            col0 = parts[0].replace('"', '').strip()
+            cfop_code = extract_and_normalize_cfop(col0)
             
-        parts = split_csv_line(line_str)
-        if not parts:
-            continue
+            val = 0.0
+            if target_column_index != -1 and target_column_index < len(parts):
+                val = clean_and_parse_float(parts[target_column_index])
+            else:
+                for cell in reversed(parts):
+                    if not cell or re.match(r'^[a-zA-Z\s]+$', re.sub(r'(?i)R\$\s?', '', cell).strip()):
+                        continue
+                    v = clean_and_parse_float(cell)
+                    if v != 0.0:
+                        val = v
+                        break
+                        
+            if val == 0.0:
+                continue
+                
+            if cfop_code:
+                row_class = classify_cfop_row(cfop_code, val, report_type)
+                for k, v in row_class.items():
+                    breakdown[k] += v
+                total += val
+                valid_rows += 1
+            else:
+                if report_type == "Compras":
+                    breakdown["compras"] += val
+                elif report_type == "Vendas":
+                    breakdown["vendas"] += val
+                elif report_type == "Serviços":
+                    breakdown["servicos"] += val
+                elif report_type == "Outras Despesas":
+                    breakdown["outras"] += val
+                total += val
+                valid_rows += 1
+    else:
+        # Lógica robusta para TXT/PDF (baseado em quebra por espaços e tokenização por colunas)
+        for line in lines:
+            line_str = line.strip()
+            if not line_str:
+                continue
+                
+            lower_line = line_str.lower()
             
-        parts = [p.strip() for p in parts]
-        
-        # Check if first cell has quotes removed
-        col0 = parts[0].replace('"', '').strip()
-        
-        # Find if there is a CFOP code in the first cell
-        cfop_code = extract_and_normalize_cfop(col0)
-        
-        # Find the value
-        val = 0.0
-        if target_column_index != -1 and target_column_index < len(parts):
-            val = clean_and_parse_float(parts[target_column_index])
-        else:
-            # Fallback search right-to-left
-            for cell in reversed(parts):
-                if not cell or re.match(r'^[a-zA-Z\s]+$', re.sub(r'(?i)R\$\s?', '', cell).strip()):
-                    continue
-                v = clean_and_parse_float(cell)
-                if v != 0.0:
-                    val = v
+            # Ignorar cabeçalhos e rodapés gerais
+            if (lower_line.startswith("____") or 
+                lower_line.startswith("====") or 
+                lower_line.startswith("----") or 
+                "pg:" in lower_line or 
+                "pag:" in lower_line or 
+                "pág:" in lower_line or 
+                "cnpj:" in lower_line or 
+                "razão social" in lower_line or 
+                "razao social" in lower_line or 
+                "total" in lower_line or 
+                "totais" in lower_line or
+                "subtotal" in lower_line or 
+                "soma" in lower_line or 
+                "resumo" in lower_line or 
+                lower_line.startswith("***")):
+                continue
+                
+            tokens = [t.strip() for t in line_str.split() if t.strip()]
+            if len(tokens) < 2:
+                continue
+                
+            # Extrair CFOP dos primeiros tokens (normalmente o primeiro)
+            cfop_code = None
+            for token in tokens[:2]:
+                cfop_code = extract_and_normalize_cfop(token)
+                if cfop_code:
                     break
                     
-        if val == 0.0:
-            continue
-            
-        if cfop_code:
-            # We have a CFOP row! Use classify_cfop_row to categorize
+            if not cfop_code:
+                continue
+                
+            # Para relatórios fiscais (ICMS/ISS), o valor contábil é o primeiro dos 5 valores à direita.
+            # Se houver pelo menos 5 tokens adicionais, o valor de interesse está na posição -5.
+            # Caso contrário, pega o último token disponível como valor contábil.
+            val = 0.0
+            if len(tokens) >= 5:
+                val = clean_and_parse_float(tokens[-5])
+            else:
+                val = clean_and_parse_float(tokens[-1])
+                
+            if val == 0.0:
+                continue
+                
             row_class = classify_cfop_row(cfop_code, val, report_type)
             for k, v in row_class.items():
                 breakdown[k] += v
-            total += val
-            valid_rows += 1
-        else:
-            # No CFOP code found. Fallback classification based on report type
-            if report_type == "Compras":
-                breakdown["compras"] += val
-            elif report_type == "Vendas":
-                breakdown["vendas"] += val
-            elif report_type == "Serviços":
-                breakdown["servicos"] += val
-            elif report_type == "Outras Despesas":
-                breakdown["outras"] += val
             total += val
             valid_rows += 1
             
@@ -592,25 +649,16 @@ def parse_excel(content_bytes: bytes, report_type: str, payroll_base: str = "cus
 def parse_pdf(content_bytes: bytes, report_type: str, payroll_base: str = "custo_func") -> Dict[str, Any]:
     try:
         reader = PdfReader(io.BytesIO(content_bytes))
-        lines = []
+        pages_text = []
         for page in reader.pages:
             text = page.extract_text()
             if text:
-                for line in text.splitlines():
-                    line = line.strip()
-                    if not line:
-                        continue
-                    # Split by multiple spaces and join with semicolon to unify with CSV parsing
-                    parts = re.split(r'\s{2,}', line)
-                    if len(parts) <= 1:
-                        # Fallback to single spaces if no double spaces, or just keep it
-                        parts = re.split(r'\s+', line)
-                    lines.append(";".join(parts))
+                pages_text.append(text)
+        content = "\n".join(pages_text)
     except Exception as e:
         print(f"Error reading PDF: {e}")
         return {"total": 0.0, "rowCount": 0, "breakdown": {"compras": 0.0, "vendas": 0.0, "servicos": 0.0, "outras": 0.0, "folha": 0.0}}
         
-    content = "\n".join(lines)
     return parse_csv_txt(content, report_type, payroll_base)
 
 def split_combined_file(file_name: str, content: str) -> List[Dict[str, Any]]:

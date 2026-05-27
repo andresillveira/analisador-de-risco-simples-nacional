@@ -12,7 +12,7 @@ from app.services.risk_service import split_combined_file
 class TestCombinedSplitBugfix(unittest.TestCase):
     
     def test_combined_file_splitting_parity(self):
-        bugfix_dir = os.path.join(backend_dir, "..", "exemples", "bugfix")
+        bugfix_dir = os.path.join(backend_dir, "..", "exemples", "old", "bugfix")
         
         compra_path = os.path.join(bugfix_dir, "Centro de Dist. Protege - Compra - 01-2026.csv")
         venda_path = os.path.join(bugfix_dir, "Centro de Dist. Protege - Venda - 01-2026.csv")

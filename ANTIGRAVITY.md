@@ -306,6 +306,14 @@ Em Maio de 2026, a aplicação passou por uma refatoração estrutural crítica 
   3. Mapeamos a extração dinâmica do valor correspondente ao total geral acumulado da folha (segundo-para-último número float localizado na linha de totais, correspondendo a **49.641,72** no exemplo) e o nome da empresa (`"AGROBORGES"`), garantindo 100% de conformidade com os formatos PDF, TXT e CSV.
   4. Expandimos a suíte de testes unitários `backend/test_parser.py` adicionando três novos testes focados na importação desses novos arquivos em todas as extensões e validando o sucesso absoluto das auditorias trabalhistas.
 
+### H. Leitores Robustos Multi-Formato (TXT & PDF) para Compras, Vendas, Serviços Prestados e Serviços Tomados
+- **O Problema**: O sistema importava e processava com sucesso apenas arquivos fiscais no formato CSV. Para arquivos TXT e PDF, a extração de dados fiscais (ICMS/ISS) falhava ou gerava discrepâncias graves devido a quebras de página, cabeçalhos, rodapés e, principalmente, à presença de vírgulas decimais que induziam falsos positivos na detecção de CSV.
+- **A Solução**:
+  1. **Motor de Tokenização Universal**: Implementamos um sistema de captura baseado em colunas à direita. Sabendo que todas as linhas de lançamentos fiscais reais possuem exatamente 5 colunas de valores (ICMS ou ISS), as linhas de dados em TXT/PDF são limpas de cabeçalhos e tokenizadas por espaços. Se a linha começa com um CFOP válido, o valor de interesse principal (Valor Contábil) é extraído de trás para frente usando o índice `-5`, garantindo precisão matemática absoluta e imunidade a quebras de página e formatações variadas.
+  2. **Refatoração do Detector de CSV**: Ajustamos a detecção automática de CSV (`is_csv`) para buscar apenas delimitadores explícitos (`;`, `|`, `\t`), neutralizando falsos positivos causados por vírgulas de centavos no padrão monetário brasileiro.
+  3. **Extração Otimizada de PDF**: Simplificamos o `parse_pdf` para ler e unir textualmente todas as páginas em uma string de texto contínua antes de delegar à lógica unificada do `parse_csv_txt`, eliminando redundâncias.
+  4. **Paridade de Dados de 100%**: Criamos o script de validação cruzada `scratch/verify_parity_all.py` que demonstrou conformidade centavo por centavo em todos os relatórios de exemplo de Compras, Vendas, Serviços Prestados e Serviços Tomados, além de mantermos todos os testes automatizados com sucesso.
+
 ---
 
 🌌 *Documento atualizado em conformidade com as diretrizes do ecossistema Antigravity. Use-o como base para todas as futuras modificações funcionais.*
