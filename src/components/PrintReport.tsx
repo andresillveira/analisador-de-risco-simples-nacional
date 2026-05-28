@@ -210,16 +210,20 @@ export default function PrintReport({
                     <td className="py-2 px-3 text-slate-400 text-[10px]">Livro de Saídas Comerciais</td>
                     <td className="py-2 px-3 text-right text-slate-600">{formatBRL(results.vendasContabilizadas)}</td>
                   </tr>
-                  <tr>
-                    <td className="py-2 px-3 pl-6 font-sans text-rose-600">↳ (-) Devoluções de Vendas</td>
-                    <td className="py-2 px-3 text-rose-500 text-[10px]">Devoluções nas Entradas (Retornos de Clientes)</td>
-                    <td className="py-2 px-3 text-right text-rose-600">-{formatBRL(results.devolucoesVendas)}</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2 px-3 pl-6 font-sans font-semibold">↳ (=) Vendas Líquidas</td>
-                    <td className="py-2 px-3 text-slate-400 text-[10px]">Base para o Faturamento</td>
-                    <td className="py-2 px-3 text-right text-slate-700 font-semibold">{formatBRL(results.vendasLiquidas)}</td>
-                  </tr>
+                  {results.devolucoesVendas > 0 && (
+                    <>
+                      <tr>
+                        <td className="py-2 px-3 pl-6 font-sans text-rose-600">↳ (-) Devoluções de Vendas</td>
+                        <td className="py-2 px-3 text-rose-500 text-[10px]">Devoluções nas Entradas (Retornos de Clientes)</td>
+                        <td className="py-2 px-3 text-right text-rose-600">-{formatBRL(results.devolucoesVendas)}</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 pl-6 font-sans font-semibold">↳ (=) Vendas Líquidas</td>
+                        <td className="py-2 px-3 text-slate-400 text-[10px]">Base para o Faturamento</td>
+                        <td className="py-2 px-3 text-right text-slate-700 font-semibold">{formatBRL(results.vendasLiquidas)}</td>
+                      </tr>
+                    </>
+                  )}
                   <tr>
                     <td className="py-2 px-3 pl-6 font-sans">↳ Serviços Prestados</td>
                     <td className="py-2 px-3 text-slate-400 text-[10px]">Registro Municipal de NFS-e</td>
@@ -237,16 +241,20 @@ export default function PrintReport({
                     <td className="py-2 px-3 text-slate-500 text-[10px]">Revenda/Industrialização Bruta</td>
                     <td className="py-2 px-3 text-right font-bold text-slate-800">{formatBRL(results.comprasContabilizadas)}</td>
                   </tr>
-                  <tr>
-                    <td className="py-2 px-3 pl-6 font-sans text-rose-600">↳ (-) Devoluções de Compras</td>
-                    <td className="py-2 px-3 text-rose-500 text-[10px]">Devoluções nas Saídas (Retorno ao Fornecedor)</td>
-                    <td className="py-2 px-3 text-right text-rose-600">-{formatBRL(results.devolucoesCompras)}</td>
-                  </tr>
-                  <tr className="bg-slate-50/50">
-                    <td className="py-2 px-3 font-sans font-bold text-slate-900">↳ (=) Compras Líquidas (Base Inciso X)</td>
-                    <td className="py-2 px-3 text-slate-600 font-semibold text-[10px]">Valor líquido considerado nas despesas e teto compras</td>
-                    <td className="py-2 px-3 text-right font-bold text-slate-900">{formatBRL(results.comprasLiquidas)}</td>
-                  </tr>
+                  {results.devolucoesCompras > 0 && (
+                    <>
+                      <tr>
+                        <td className="py-2 px-3 pl-6 font-sans text-rose-600">↳ (-) Devoluções de Compras</td>
+                        <td className="py-2 px-3 text-rose-500 text-[10px]">Devoluções nas Saídas (Retorno ao Fornecedor)</td>
+                        <td className="py-2 px-3 text-right text-rose-600">-{formatBRL(results.devolucoesCompras)}</td>
+                      </tr>
+                      <tr className="bg-slate-50/50">
+                        <td className="py-2 px-3 font-sans font-bold text-slate-900">↳ (=) Compras Líquidas (Base Inciso X)</td>
+                        <td className="py-2 px-3 text-slate-600 font-semibold text-[10px]">Valor líquido considerado nas despesas e teto compras</td>
+                        <td className="py-2 px-3 text-right font-bold text-slate-900">{formatBRL(results.comprasLiquidas)}</td>
+                      </tr>
+                    </>
+                  )}
                   <tr>
                     <td className="py-2 px-3 font-sans font-semibold">Despesas Gerais Pagas do período</td>
                     <td className="py-2 px-3 text-slate-500 text-[10px]">Soma de Compras + Folha + Outros Custos</td>

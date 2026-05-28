@@ -145,47 +145,57 @@ export default function RiskAnalysisCards({
             </div>
 
             {/* Mathematics calculation detail */}
-            <div className="space-y-1.5 text-xs text-slate-650 font-mono bg-slate-50 p-3.5 rounded-lg mb-4 leading-relaxed border border-slate-200/60">
-              <div className="flex justify-between">
-                <span>Compras Brutas:</span>
-                <span>{formatBRL(results.comprasContabilizadas)}</span>
-              </div>
-              <div className="flex justify-between text-rose-600">
-                <span>(-) Dev. Compras (Saídas):</span>
-                <span>{formatBRL(results.devolucoesCompras)}</span>
-              </div>
-              <div className="flex justify-between font-bold text-slate-800 border-b border-slate-200 pb-1.5 mb-1.5">
-                <span>(=) Compras Líquidas (A):</span>
-                <span>{formatBRL(results.comprasLiquidas)}</span>
+            <div className="space-y-1.5 text-xs text-slate-600 font-mono bg-slate-50 p-3 rounded-lg mb-4">
+              <div className="flex justify-between text-[11px]">
+                <span>Compras {results.devolucoesCompras > 0 ? "Líquidas" : ""}(A):</span>
+                <span className="font-bold text-slate-700">{formatBRL(results.comprasLiquidas)}</span>
               </div>
               
-              <div className="flex justify-between">
-                <span>Vendas Brutas:</span>
-                <span>{formatBRL(results.vendasContabilizadas)}</span>
-              </div>
-              <div className="flex justify-between text-rose-600">
-                <span>(-) Dev. Vendas (Entradas):</span>
-                <span>{formatBRL(results.devolucoesVendas)}</span>
-              </div>
-              <div className="flex justify-between font-semibold text-slate-700">
-                <span>(=) Vendas Líquidas:</span>
-                <span>{formatBRL(results.vendasLiquidas)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>(+) Serviços Prestados:</span>
-                <span>{formatBRL(results.servicosCfopContabilizados)}</span>
-              </div>
-              {results.outrasReceitasContabilizadas > 0 && (
-                <div className="flex justify-between">
-                  <span>(+) Outras Receitas:</span>
-                  <span>{formatBRL(results.outrasReceitasContabilizadas)}</span>
+              {results.devolucoesCompras > 0 && (
+                <div className="pl-3 text-[10px] text-slate-400 space-y-0.5">
+                  <div className="flex justify-between">
+                    <span>↳ Compras Brutas:</span>
+                    <span>{formatBRL(results.comprasContabilizadas)}</span>
+                  </div>
+                  <div className="flex justify-between text-rose-500">
+                    <span>↳ (-) Dev. Compras (Saídas):</span>
+                    <span>{formatBRL(results.devolucoesCompras)}</span>
+                  </div>
                 </div>
               )}
-              <div className="flex justify-between font-bold text-slate-800 border-t border-dashed border-slate-250 pt-1.5 mt-1">
-                <span>(=) Faturamento Líquido (B):</span>
-                <span className="text-slate-800">{formatBRL(results.faturamento)}</span>
+              
+              <div className="flex justify-between border-t border-dashed border-slate-200 pt-1.5 mt-1.5 text-[11px] font-semibold text-slate-700">
+                <span>Faturamento Líquido (B):</span>
+                <span className="font-bold text-slate-700">{formatBRL(results.faturamento)}</span>
               </div>
-              <div className="flex justify-between pt-2 border-t border-slate-200 font-semibold">
+              
+              <div className="pl-3 text-[10px] text-slate-400 space-y-0.5">
+                {results.devolucoesVendas > 0 ? (
+                  <div className="flex justify-between">
+                    <span>↳ Vendas líquidas:</span>
+                    <span>{formatBRL(results.vendasLiquidas)} (Bruto: {formatBRL(results.vendasContabilizadas)} - Dev: {formatBRL(results.devolucoesVendas)})</span>
+                  </div>
+                ) : (
+                  <div className="flex justify-between">
+                    <span>↳ Vendas Brutas:</span>
+                    <span>{formatBRL(results.vendasContabilizadas)}</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between">
+                  <span>↳ Serviços Prestados:</span>
+                  <span>{formatBRL(results.servicosCfopContabilizados)}</span>
+                </div>
+                
+                {results.outrasReceitasContabilizadas > 0 && (
+                  <div className="flex justify-between">
+                    <span>↳ Outras Receitas:</span>
+                    <span>{formatBRL(results.outrasReceitasContabilizadas)}</span>
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex justify-between border-t border-dashed border-slate-200 pt-1.5 mt-1.5 text-[11px] font-semibold">
                 <span>Resultado Líquido (A ÷ B):</span>
                 <span className={`font-bold ${results.incisoXExceeded ? "text-red-600" : "text-emerald-600"}`}>
                   {results.faturamento > 0 ? formatPercentage(results.comprasPercentage) : "0,00%"}
@@ -339,7 +349,10 @@ export default function RiskAnalysisCards({
               <div className="pl-3 text-[10px] text-slate-400 space-y-0.5">
                 <div className="flex justify-between">
                   <span>↳ Compras líquidas:</span>
-                  <span>{formatBRL(results.comprasLiquidas)} (Bruto: {formatBRL(results.comprasContabilizadas)} - Dev: {formatBRL(results.devolucoesCompras)})</span>
+                  <span>
+                    {formatBRL(results.comprasLiquidas)}
+                    {results.devolucoesCompras > 0 && ` (Bruto: ${formatBRL(results.comprasContabilizadas)} - Dev: ${formatBRL(results.devolucoesCompras)})`}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span>↳ Folha de Pagamentos:</span>
