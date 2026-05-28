@@ -345,6 +345,7 @@ Em Maio de 2026, a aplicação passou por uma refatoração estrutural crítica 
   1. **Ocultação Condicional**: Implementamos a ocultação automática das linhas de devolução e subtotais líquidos subsequentes em `RiskAnalysisCards.tsx` e `PrintReport.tsx` caso seu valor seja zero.
   2. **Padronização e Simetria**: Refatoramos o card do Critério 1 para herdar todas as decisões estéticas do Critério 2 (alinhamento lateral, listagem compacta com recuo `pl-3` e setas `↳`).
   3. **Detalhamento Inline**: Refinamos a exibição do detalhe inline em parênteses no Critério 2 para ocultar o trecho `(Bruto: ... - Dev: ...)` se o abatimento de compras for nulo.
+  4. **Desmembramento Cirúrgico de Vendas**: Refatoramos o fluxo de faturamento no Critério 1 para desmembrar vendas brutas, devoluções de vendas e vendas líquidas em linhas separadas e recuadas quando existirem devoluções, garantindo perfeita simetria com compras.
 
 ---
 

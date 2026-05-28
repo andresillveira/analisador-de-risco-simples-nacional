@@ -171,10 +171,20 @@ export default function RiskAnalysisCards({
               
               <div className="pl-3 text-[10px] text-slate-400 space-y-0.5">
                 {results.devolucoesVendas > 0 ? (
-                  <div className="flex justify-between">
-                    <span>↳ Vendas líquidas:</span>
-                    <span>{formatBRL(results.vendasLiquidas)} (Bruto: {formatBRL(results.vendasContabilizadas)} - Dev: {formatBRL(results.devolucoesVendas)})</span>
-                  </div>
+                  <>
+                    <div className="flex justify-between">
+                      <span>↳ Vendas Brutas:</span>
+                      <span>{formatBRL(results.vendasContabilizadas)}</span>
+                    </div>
+                    <div className="flex justify-between text-rose-500">
+                      <span>↳ (-) Dev. Vendas (Entradas):</span>
+                      <span>{formatBRL(results.devolucoesVendas)}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold text-slate-500">
+                      <span>↳ (=) Vendas Líquidas:</span>
+                      <span>{formatBRL(results.vendasLiquidas)}</span>
+                    </div>
+                  </>
                 ) : (
                   <div className="flex justify-between">
                     <span>↳ Vendas Brutas:</span>
