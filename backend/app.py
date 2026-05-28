@@ -274,6 +274,69 @@ def parse_csv_txt(content: str, report_type: str, payroll_base: str = "custo_fun
     
     # 1. Folha de Pagamento Report
     if report_type == "Folha de Pagamento":
+        # Check for the new payroll report pattern
+        has_inss_fgts = bool(re.search(r"VALORES\s+DE\s+INSS/FGTS\s+CONFORME\s+RESUMO\s+PROCESSADO", content, re.IGNORECASE))
+        has_resumo_geral = bool(re.search(r"RESUMO\s*GERAL|R\s*E\s*S\s*U\s*M\s*O\s*G\s*E\s*R\s*A\s*L", content, re.IGNORECASE))
+        has_resumo_empregados = bool(re.search(r"RESUMO\s*DE\s*EMPREGADOS|R\s*E\s*S\s*U\s*M\s*O\s*D\s*E\s*E\s*M\s*P\s*R\s*E\s*G\s*A\s*D\s*O\s*S", content, re.IGNORECASE))
+        
+        if has_inss_fgts and (has_resumo_geral or has_resumo_empregados):
+            company_match = re.search(r"Empresa:\s*\d+\s*-\s*(.+?)(?=\s{2,}|CNPJ:|$)", content, re.IGNORECASE)
+            if company_match:
+                company_name = company_match.group(1).strip()
+            
+            # Extract Total Proventos
+            total_proventos = 0.0
+            resumo_geral_match = re.search(r"R\s*E\s*S\s*U\s*M\s*O\s+G\s*E\s*R\s*A\s*L", content, re.IGNORECASE)
+            if resumo_geral_match:
+                start_idx = resumo_geral_match.start()
+                sliced_content = content[start_idx:]
+                prov_match = re.search(r"TOTAL\s+DE\s+PROVENTOS\s*-+>.*", sliced_content, re.IGNORECASE)
+                if prov_match:
+                    try:
+                        valores_numericos = re.findall(r"[\d\.,]+", prov_match.group(0))
+                        if valores_numericos:
+                            total_proventos = clean_and_parse_float(valores_numericos[-1])
+                    except Exception:
+                        pass
+                        
+            # Extract Total Liquido GPS
+            total_liquido_gps = 0.0
+            gps_match = re.search(r"Total\s*L[ií]quido\.+:\s*([0-9.,]+)", content, re.IGNORECASE)
+            if gps_match:
+                try:
+                    total_liquido_gps = clean_and_parse_float(gps_match.group(1))
+                except Exception:
+                    pass
+                    
+            # Extract FGTS sem 13o (Funcionário)
+            fgts_sem_13o = 0.0
+            fgts_match = re.search(r"FGTS\s*sem\s*13[o0°º]\s*\(Funcion[áa]rio\)\.+:\s*([0-9.,]+)", content, re.IGNORECASE)
+            if fgts_match:
+                try:
+                    fgts_sem_13o = clean_and_parse_float(fgts_match.group(1))
+                except Exception:
+                    pass
+                    
+            # Extract IRRF s/Pró-Labore
+            irrf_pro_labore = 0.0
+            irrf_match = re.search(r"IRRF\s*s/Pr[óo]-Labore\.+\s*([0-9.,]+)", content, re.IGNORECASE)
+            if irrf_match:
+                try:
+                    irrf_pro_labore = clean_and_parse_float(irrf_match.group(1))
+                except Exception:
+                    pass
+                    
+            # Consolidated calculation
+            total = total_proventos + total_liquido_gps + fgts_sem_13o + irrf_pro_labore
+            breakdown["folha"] = total
+            
+            return {
+                "total": round(total, 2),
+                "rowCount": 0,
+                "breakdown": {k: round(v, 2) for k, v in breakdown.items()},
+                "company_name": company_name
+            }
+
         is_ficha_financeira = "ficha financeira" in content.lower().replace(';', ' ').replace('\t', ' ')
         if is_ficha_financeira:
             company_name_extracted = None
@@ -726,7 +789,10 @@ def detect_report_type(file_name: str, sample_content: str) -> str:
         "empregados/custos" in cont_lower or 
         "contrato do empregado" in cont_lower or 
         "relação cálculo" in cont_lower or 
-        "relacao calculo" in cont_lower):
+        "relacao calculo" in cont_lower or
+        (re.search(r"VALORES\s+DE\s+INSS/FGTS\s+CONFORME\s+RESUMO\s+PROCESSADO", sample_content, re.IGNORECASE) and
+         (re.search(r"RESUMO\s*GERAL|R\s*E\s*S\s*U\s*M\s*O\s*G\s*E\s*R\s*A\s*L", sample_content, re.IGNORECASE) or
+          re.search(r"RESUMO\s*DE\s*EMPREGADOS|R\s*E\s*S\s*U\s*M\s*O\s*D\s*E\s*E\s*M\s*P\s*R\s*E\s*G\s*A\s*D\s*O\s*S", sample_content, re.IGNORECASE)))):
         return "Folha de Pagamento"
         
     if ("servico" in fn_lower or 

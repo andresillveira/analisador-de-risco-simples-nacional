@@ -124,7 +124,10 @@ def detect_report_type(file_name: str, sample_content: str) -> str:
         "empregados/custos" in cont_lower or 
         "contrato do empregado" in cont_lower or 
         "relação cálculo" in cont_lower or 
-        "relacao calculo" in cont_lower):
+        "relacao calculo" in cont_lower or
+        (re.search(r"VALORES\s+DE\s+INSS/FGTS\s+CONFORME\s+RESUMO\s+PROCESSADO", sample_content, re.IGNORECASE) and
+         (re.search(r"RESUMO\s*GERAL|R\s*E\s*S\s*U\s*M\s*O\s*G\s*E\s*R\s*A\s*L", sample_content, re.IGNORECASE) or
+          re.search(r"RESUMO\s*DE\s*EMPREGADOS|R\s*E\s*S\s*U\s*M\s*O\s*D\s*E\s*E\s*M\s*P\s*R\s*E\s*G\s*A\s*D\s*O\s*S", sample_content, re.IGNORECASE)))):
         return "Folha de Pagamento"
         
     if ("servico" in fn_lower or 

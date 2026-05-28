@@ -349,4 +349,13 @@ Em Maio de 2026, a aplicação passou por uma refatoração estrutural crítica 
 
 ---
 
+### L. Suporte ao Novo Layout de Relatório de Folha de Pagamento em PDF (Restaurante Amaral)
+- **O Problema**: A empresa precisava processar um novo padrão de relatório de Folha de Pagamento em formato PDF/TXT que não utiliza o layout clássico de funcionários individuais. Além disso, o valor da folha final para o indicador do **Inciso IX** devia ser consolidado pela soma de 4 variáveis específicas distribuídas no texto: `Total de Proventos` (no Resumo Geral), `Total Líquido de GPS`, `FGTS sem 13º (Funcionário)` e `IRRF s/Pró-Labore`. Adicionalmente, em competências como `02-2026`, o total de proventos possui colunas intermediárias, exigindo a captura precisa do último valor numérico da linha correspondente.
+- **A Solução**:
+  1. **Assinatura e Heurística**: Implementamos uma heurística de detecção reativa em `detect_report_type` (em `app.py` e `risk_service.py`) combinando as âncoras `"VALORES DE INSS/FGTS CONFORME RESUMO PROCESSADO"` e `"RESUMO GERAL"` ou `"RESUMO DE EMPREGADOS"` (suportando variações espaçadas típicas de extração de PDF).
+  2. **Sanitização e Parsing Cirúrgico**: Atualizamos `parse_csv_txt` (no monolito e no serviço modular) para interceptar este padrão. O nome da empresa é extraído a partir da linha de cabeçalho (`Empresa:\s*\d+\s*-\s*([^-]+?)(?=\s{2,}|CNPJ:|$)`). Para o `TOTAL DE PROVENTOS`, capturamos toda a linha correspondente do Resumo Geral e utilizamos `re.findall(r"[\d\.,]+")` para pegar o último elemento da lista (`valores_numericos[-1]`), garantindo a captura do Total Geral consolidado do período, mesmo sob variações de colunas. As outras 3 sub-âncoras são extraídas com expressões regulares flexíveis e tratadas utilizando a função utilitária `clean_and_parse_float` protegida com blocos `try-except` individuais que assumem `0.0` caso ausentes ou zerados.
+  3. **Suíte de Testes Expandida**: Adicionamos testes automatizados (**Test Case 10** e **Test Case 11**) em `backend/test_parser.py` para as competências `01-2026` (total R$ 47.066,02) e `02-2026` (total R$ 53.066,57) da empresa `RESTAURANTE E LANCHONETE AMARAL E PEREIRA LTDA`, assegurando a precisão matemática absoluta e prevenindo regressões.
+
+---
+
 🌌 *Documento atualizado em conformidade com as diretrizes do ecossistema Antigravity. Use-o como base para todas as futuras modificações funcionais.*

@@ -189,6 +189,32 @@ def run_tests():
     assert abs(parsed_transport['breakdown']['outras'] - 1200.00) < 0.01, f"Expected 1200.00 outras, got {parsed_transport['breakdown']['outras']}"
     print("  => SUCCESS!\n")
 
+    # 10. Test New Restaurante Amaral PDF (01-2026)
+    print("Test 10: Parsing of Restaurante Amaral -01-2026 payroll PDF")
+    amaral_pdf_path1 = os.path.join(exemples_dir, "Restaurante Amaral -01-2026.pdf")
+    with open(amaral_pdf_path1, "rb") as f:
+        pdf_bytes1 = f.read()
+    parsed_amaral1 = parse_pdf(pdf_bytes1, "Folha de Pagamento")
+    print(f"File: {os.path.basename(amaral_pdf_path1)}")
+    print(f"  Detected Total: {parsed_amaral1['total']}")
+    print(f"  Company Name: {parsed_amaral1['company_name']}")
+    assert abs(parsed_amaral1['total'] - 47066.02) < 0.01, f"Expected 47066.02, got {parsed_amaral1['total']}"
+    assert parsed_amaral1['company_name'] == "RESTAURANTE E LANCHONETE AMARAL E PEREIRA LTDA", f"Expected RESTAURANTE E LANCHONETE AMARAL E PEREIRA LTDA, got {parsed_amaral1['company_name']}"
+    print("  => SUCCESS!\n")
+
+    # 11. Test New Restaurante Amaral PDF (02-2026)
+    print("Test 11: Parsing of Restaurante Amaral -02-2026 payroll PDF")
+    amaral_pdf_path2 = os.path.join(exemples_dir, "Restaurante Amaral -02-2026.pdf")
+    with open(amaral_pdf_path2, "rb") as f:
+        pdf_bytes2 = f.read()
+    parsed_amaral2 = parse_pdf(pdf_bytes2, "Folha de Pagamento")
+    print(f"File: {os.path.basename(amaral_pdf_path2)}")
+    print(f"  Detected Total: {parsed_amaral2['total']}")
+    print(f"  Company Name: {parsed_amaral2['company_name']}")
+    assert abs(parsed_amaral2['total'] - 53066.57) < 0.01, f"Expected 53066.57, got {parsed_amaral2['total']}"
+    assert parsed_amaral2['company_name'] == "RESTAURANTE E LANCHONETE AMARAL E PEREIRA LTDA", f"Expected RESTAURANTE E LANCHONETE AMARAL E PEREIRA LTDA, got {parsed_amaral2['company_name']}"
+    print("  => SUCCESS!\n")
+
     print("=== ALL PARSER TESTS PASSED FLAWLESSLY! ===")
 
 if __name__ == "__main__":
