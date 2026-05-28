@@ -224,7 +224,9 @@ A aplicação carrega dinamicamente mais de 300 códigos CFOP mapeados de acordo
 | **CFOP 9.xxx** (ou sob categoria de Saída de Serviço) | Serviços Prestados | Incrementa Receitas / Faturamento. |
 | **CFOPs de Compras** (ex: `1.102`, `2.102`, `1.403`) | Compras | Base de cálculo do **Inciso X** (Limite de 80%). |
 | **CFOP 8.xxx** (ou Entrada de Serviços) | Serviços Tomados | Computado como Outras Despesas no **Inciso IX**. |
-| **CFOPs de Uso e Consumo / Fretes** (ex: `1.556`, `2.352`) | Transporte / Consumo | Computado como Outras Despesas no **Inciso IX**. |
+| **CFOPs de Transporte (Saídas)** (ex: `5.351`, `6.356`) | Transporte | **Saída:** Classificado como `"servicos"` (Serviços Prestados). Incrementa Receitas / Faturamento. |
+| **CFOPs de Transporte (Entradas)** (ex: `1.353`, `2.356`) | Transporte | **Entrada:** Classificado como `"outras"` (Serviços Tomados / Outras Despesas). Computado no **Inciso IX** (120%). |
+| **CFOPs de Uso e Consumo** (ex: `1.556`, `2.556`) | Uso ou Consumo | Computado como Outras Despesas no **Inciso IX**. |
 | **CFOPs de Ativo Imobilizado (Aquisição)** (ex: `1.551`, `2.551`, `1.406`, `2.151`) | Ativo Imobilizado | **Cenário 2 (Inciso IX):** Computado como Outras Despesas. **Cenário 1 (Inciso X):** Totalmente desconsiderado (isolado). |
 | **Devoluções de Venda (Entradas)** (ex: `1.202`, `2.202`) | Devolução de Venda | **Redutor de Vendas:** Subtraído das Vendas para obter as Vendas Líquidas. |
 | **Devoluções de Compra (Saídas)** (ex: `5.201`, `6.201`) | Devolução de Compra | **Redutor de Compras:** Subtraído das Compras para obter as Compras Líquidas. |
@@ -324,6 +326,16 @@ Em Maio de 2026, a aplicação passou por uma refatoração estrutural crítica 
   1. **Motor de Cálculo Ajustado**: Atualizamos o motor de cálculo (`risk_service.py` e monolito `app.py`) para capturar dinamicamente devoluções identificando a palavra-chave `"devol"` (case-insensitive) no nome da categoria fiscal.
   2. **Abatimento Dinâmico**: Classificamos devoluções de entrada como dedutoras de vendas e devoluções de saída como dedutoras de compras. O sistema agora computa as vendas líquidas ($Vendas Líquidas = Vendas - Devoluções (Entradas)$) e compras líquidas ($Compras Líquidas = Compras - Devoluções (Saídas)$) e repassa esses valores consolidados para a avaliação das regras de risco e limites de 80% (Inciso X) e 120% (Inciso IX).
   3. **Visualização e Simulação Transparente**: Modificamos os cards de status e gráficos no React para exibir a matemática detalhada ($Bruto - Devoluções = Líquido$) e incluímos as devoluções nas ferramentas de simulação manual e relatório de impressão física.
+
+---
+
+### J. Correção na Regra de Negócio de Serviços de Transporte
+- **O Problema**: No arquivo `CFOP_Categorizado.csv`, tanto os CFOPs de entrada (ex: `1.353`, `2.356`) quanto os de saída (ex: `5.351`, `6.352`) de transporte estavam rotulados genericamente com a Categoria "Transporte". Isso fazia com que qualquer lançamento de transporte fosse classificado como despesa (`outras`), gerando uma distorção grave para empresas que são transportadoras (prestadoras do serviço), pois suas saídas (faturamento) eram computadas erroneamente como despesas operacionais no Inciso IX.
+- **A Solução**:
+  1. Refatoramos a função `classify_cfop_row` no backend modular (`risk_service.py`) e monolítico (`app.py`) para aplicar uma heurística baseada no primeiro dígito do CFOP para a categoria "Transporte".
+  2. CFOPs iniciados em `5`, `6` ou `7` (Saídas) agora são classificados como `"servicos"` (Serviços Prestados), incrementando corretamente o faturamento total da empresa prestadora (denominador dos Incisos IX e X).
+  3. CFOPs iniciados em `1`, `2` ou `3` (Entradas) permanecem como `"outras"` (Serviços Tomados / Outras Despesas), incrementando o teto de 120% do Inciso IX.
+  4. Adicionamos testes unitários em `backend/tests/test_calculator.py` e testes de integração de parsing em `backend/test_parser.py` para garantir conformidade estrita e prevenir regressões.
 
 ---
 

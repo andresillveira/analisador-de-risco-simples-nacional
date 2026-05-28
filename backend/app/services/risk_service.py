@@ -41,7 +41,12 @@ def classify_cfop_row(cfop_code: str, val: float, report_type: str) -> Dict[str,
             res["compras"] = val
         elif category == "Vendas":
             res["vendas"] = val
-        elif category in ["Transporte", "Uso ou Consumo"]:
+        elif category == "Transporte":
+            if cfop_normalized.startswith(("5", "6", "7")) or cfop_code.startswith(("5", "6", "7")):
+                res["servicos"] = val
+            else:
+                res["outras"] = val
+        elif category == "Uso ou Consumo":
             res["outras"] = val
     return res
 

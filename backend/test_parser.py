@@ -179,6 +179,16 @@ def run_tests():
     assert parsed_new_pdf['company_name'] == "AGROBORGES", f"Expected AGROBORGES, got {parsed_new_pdf['company_name']}"
     print("  => SUCCESS!\n")
 
+    # 9. Test Transport output / input classification in parsing
+    print("Test 9: Parsing/Classification of Transport CFOPs")
+    transport_output_content = "CFOP;Descrição;Vlr. Contábil\n5.351;Prestacao de servico de transporte;5000,00\n1.353;Aquisicao de servico de transporte;1200,00"
+    parsed_transport = parse_csv_txt(transport_output_content, "Vendas")
+    print("  Test Transport output classification in parse_csv_txt:")
+    print(f"    Breakdown: {parsed_transport['breakdown']}")
+    assert abs(parsed_transport['breakdown']['servicos'] - 5000.00) < 0.01, f"Expected 5000.00 servicos, got {parsed_transport['breakdown']['servicos']}"
+    assert abs(parsed_transport['breakdown']['outras'] - 1200.00) < 0.01, f"Expected 1200.00 outras, got {parsed_transport['breakdown']['outras']}"
+    print("  => SUCCESS!\n")
+
     print("=== ALL PARSER TESTS PASSED FLAWLESSLY! ===")
 
 if __name__ == "__main__":

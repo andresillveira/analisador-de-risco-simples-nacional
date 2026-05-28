@@ -148,6 +148,25 @@ class TestTaxCalculator(unittest.TestCase):
         self.assertEqual(res_1102["compras"], 500.0)
         self.assertEqual(res_1102["outras"], 0.0)
 
+    def test_transport_service_classification(self):
+        # Transporte de Saída (CFOPs 5.351, 6.352, 7.350) -> Devem ser classificados como 'servicos'
+        res_5351 = classify_cfop_row("5.351", 1500.0, "Vendas")
+        self.assertEqual(res_5351["servicos"], 1500.0)
+        self.assertEqual(res_5351["outras"], 0.0)
+
+        res_6352 = classify_cfop_row("6.352", 2500.0, "Vendas")
+        self.assertEqual(res_6352["servicos"], 2500.0)
+        self.assertEqual(res_6352["outras"], 0.0)
+
+        # Transporte de Entrada (CFOPs 1.353, 2.356) -> Devem permanecer como 'outras'
+        res_1353 = classify_cfop_row("1.353", 500.0, "Compras")
+        self.assertEqual(res_1353["outras"], 500.0)
+        self.assertEqual(res_1353["servicos"], 0.0)
+
+        res_2356 = classify_cfop_row("2.356", 800.0, "Compras")
+        self.assertEqual(res_2356["outras"], 800.0)
+        self.assertEqual(res_2356["servicos"], 0.0)
+
     def test_devolucao_offsetting(self):
         # 1. Test classify_cfop_row for devoluções
         # Devolução de venda (Entrada) Ex: 1.201, 2.202

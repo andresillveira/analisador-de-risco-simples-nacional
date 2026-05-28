@@ -188,8 +188,13 @@ def classify_cfop_row(cfop_code: str, val: float, report_type: str) -> Dict[str,
         # 4. Vendas
         elif category == "Vendas":
             res["vendas"] = val
-        # 5. Fretes (Transporte) e Uso/Consumo -> Contam como Outras Despesas operacionais
-        elif category in ["Transporte", "Uso ou Consumo"]:
+        # 5. Fretes (Transporte) e Uso/Consumo
+        elif category == "Transporte":
+            if cfop_normalized.startswith(("5", "6", "7")) or cfop_code.startswith(("5", "6", "7")):
+                res["servicos"] = val
+            else:
+                res["outras"] = val
+        elif category == "Uso ou Consumo":
             res["outras"] = val
         # Outras categorias como Devolução, Ativo Permanente e Transferências são ignoradas.
     return res
