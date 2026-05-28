@@ -35,7 +35,7 @@ graph TD
         Router[routers/api.py - FastAPI Router]
         Parser[services/parser_service.py - PDF/Excel/CSV Parsing]
         RiskEngine[services/risk_service.py - Mecanismo Fiscal]
-        JSONDB[(data/ - JSON Databases)]
+        DB[(analisador.db - SQLite DB)]
         CFOP[CFOP_Categorizado.csv]
     end
 
@@ -48,7 +48,7 @@ graph TD
     Router --> RiskEngine
     Parser --> CFOP
     
-    Router --> JSONDB
+    Router --> DB
 ```
 
 ---
@@ -77,20 +77,24 @@ D:\analisador-de-risco-simples-nacional\
 │   │   │   └── risk_service.py   # Implementação matemática do Art. 29
 │   │   ├── utils/
 │   │   │   ├── __init__.py
-│   │   │   ├── file_utils.py     # Leitura/escrita dos bancos de dados JSON locais
+│   │   │   ├── file_utils.py     # Legado: Leitura/escrita de JSONs locais
 │   │   │   └── text_utils.py     # Sanitização numérica e regex de CFOPs
 │   │   ├── __init__.py
 │   │   ├── config.py         # Metadados de relatórios, CFOP_MAP e Perfis de Simulação
-│   │   ├── main.py           # Inicialização e configuração de CORS do FastAPI
+│   │   ├── database.py       # Configuração e tabelas do banco SQLite via SQLModel ORM
+│   │   ├── main.py           # Inicialização, DB startup hooks e CORS do FastAPI
 │   │   └── models.py         # Esquemas de validação Pydantic para as APIs
 │   │
-│   ├── data/                 # 💾 Armazenamento Local (Bancos JSON leves)
-│   │   ├── history.json      # Logs e auditorias salvas para rastreabilidade
-│   │   └── manual_values.json # Cache de parametrizações inseridas manualmente
+│   ├── data/                 # 💾 Legado: Armazenamento local (JSONs)
+│   │   ├── history.json      # Logs antigos migrados no primeiro boot
+│   │   └── manual_values.json # Cache antigo migrado no primeiro boot
 │   │
 │   ├── app.py                # Legado/Módulo monolítico completo do backend
 │   ├── test_parser.py        # Suite de validação e testes dos parsers fiscais
 │   └── tests/                # Testes automatizados adicionais
+│       ├── test_calculator.py
+│       ├── test_combined_split.py
+│       └── test_database.py  # Testes integrados de CRUD com SQLite em memória
 │
 ├── exemples/                 # 📄 Arquivos modelo para simulação de upload
 │   ├── Agroborges - Folha - 01-2026 (Ficha Financeira).csv # Novo layout Ficha Financeira (CSV)
@@ -154,7 +158,9 @@ Abaixo estão detalhadas as tecnologias utilizadas nos dois lados da aplicação
 | **Uvicorn** | Servidor ASGI de altíssima performance para executar a aplicação FastAPI. |
 | **Pandas** | Leitura e tratamento estruturado de dados tabulares vindos de planilhas Excel (`.xlsx`). |
 | **PyPDF (pypdf)** | Extração nativa de textos de relatórios e extratos fiscais emitidos em `.pdf`. |
+| **SQLModel** | ORM relacional baseado em SQLAlchemy e Pydantic para interagir com o SQLite de forma assíncrona/reativa. |
 | **Pydantic v2** | Tipagem estática e validação automática de payloads JSON no backend. |
+| **python-dotenv** | Isolamento de configurações sensíveis e URL do banco de dados em arquivo `.env`. |
 | **CSV (Nativo)** | Biblioteca nativa de processamento de fluxos delimitados, essencial para o arquivo `CFOP_Categorizado.csv`. |
 
 ---
@@ -199,15 +205,15 @@ Este é o coração do sistema. Ele permite que o usuário simplesmente anexe ar
 ### B. Fluxo de Simulação e Overrides Manuais
 Para análises onde o usuário não possui os arquivos fiscais ou deseja testar cenários hipotéticos ("E se meu faturamento subir 20%?"), ele pode usar o **ManualValuesEditor**:
 
-1.  **Carregamento:** Ao abrir o editor manual de uma empresa/período, a UI faz um `GET /api/manual-values?company=...&period=...`. O backend verifica se já existem dados salvos no cache `manual_values.json`. Caso negativo, retorna um modelo vazio.
+1.  **Carregamento:** Ao abrir o editor manual de uma empresa/período, a UI faz um `GET /api/manual-values?company=...&period=...`. O backend verifica se já existem dados salvos na tabela `manual_values` do SQLite. Caso negativo, retorna um modelo vazio.
 2.  **Edição:** O usuário altera campos numéricos (Vendas, Compras, Pró-Labore, Despesas).
-3.  **Cálculo em Tempo Real:** Cada alteração envia os dados para `POST /api/manual-values`. O backend persiste o estado no JSON e reavalia a matemática tributária do Art. 29 imediatamente, devolvendo os novos alertas e riscos para atualização instantânea dos gráficos e termômetros visuais.
+3.  **Cálculo em Tempo Real:** Cada alteração envia os dados para `POST /api/manual-values`. O backend persiste o estado na tabela `manual_values` do banco e reavalia a matemática tributária do Art. 29 imediatamente, devolvendo os novos alertas e riscos para atualização instantânea dos gráficos e termômetros visuais.
 
 ### C. Fluxo de Histórico e Comparação de Auditorias
 O painel de histórico (`AuditHistoryTab`) provê rastreabilidade completa e possibilita ver a evolução financeira da empresa:
 
-*   **Salvar Auditoria:** Com os resultados em tela, o usuário salva o registro utilizando o `SaveAuditConsole`. O front envia um `POST /api/history`. O backend gera um ID único, anexa um timestamp real e adiciona o registro no topo de `history.json`.
-*   **Comparação Cruzada:** O usuário pode selecionar dois cards quaisquer do histórico (`AuditHistoryTab`) e clicar em "Comparar". O front dispara um `POST /api/compare-audits` contendo os dois IDs. O backend busca ambos em `history.json`, calcula as variações absolutas de faturamento, compras e despesas, calcula o delta percentual e sinaliza se houve mudança de status legal do Simples Nacional (ex: passou de Regular para Em Risco).
+*   **Salvar Auditoria:** Com os resultados em tela, o usuário salva o registro utilizando o `SaveAuditConsole`. O front envia um `POST /api/history`. O backend gera um ID único, anexa um timestamp real e adiciona o registro no topo do histórico do banco SQLite (`audit_records`).
+*   **Comparação Cruzada:** O usuário pode selecionar dois cards quaisquer do histórico (`AuditHistoryTab`) e clicar em "Comparar". O front dispara um `POST /api/compare-audits` contendo os dois IDs. O backend busca ambos no banco SQLite, calcula as variações absolutas de faturamento, compras e despesas, calcula o delta percentual e sinaliza se houve mudança de status legal do Simples Nacional (ex: passou de Regular para Em Risco).
 
 ---
 
@@ -355,6 +361,16 @@ Em Maio de 2026, a aplicação passou por uma refatoração estrutural crítica 
   1. **Assinatura e Heurística**: Implementamos uma heurística de detecção reativa em `detect_report_type` (em `app.py` e `risk_service.py`) combinando as âncoras `"VALORES DE INSS/FGTS CONFORME RESUMO PROCESSADO"` e `"RESUMO GERAL"` ou `"RESUMO DE EMPREGADOS"` (suportando variações espaçadas típicas de extração de PDF).
   2. **Sanitização e Parsing Cirúrgico**: Atualizamos `parse_csv_txt` (no monolito e no serviço modular) para interceptar este padrão. O nome da empresa é extraído a partir da linha de cabeçalho (`Empresa:\s*\d+\s*-\s*([^-]+?)(?=\s{2,}|CNPJ:|$)`). Para o `TOTAL DE PROVENTOS`, capturamos toda a linha correspondente do Resumo Geral e utilizamos `re.findall(r"[\d\.,]+")` para pegar o último elemento da lista (`valores_numericos[-1]`), garantindo a captura do Total Geral consolidado do período, mesmo sob variações de colunas. As outras 3 sub-âncoras são extraídas com expressões regulares flexíveis e tratadas utilizando a função utilitária `clean_and_parse_float` protegida com blocos `try-except` individuais que assumem `0.0` caso ausentes ou zerados.
   3. **Suíte de Testes Expandida**: Adicionamos testes automatizados (**Test Case 10** e **Test Case 11**) em `backend/test_parser.py` para as competências `01-2026` (total R$ 47.066,02) e `02-2026` (total R$ 53.066,57) da empresa `RESTAURANTE E LANCHONETE AMARAL E PEREIRA LTDA`, assegurando a precisão matemática absoluta e prevenindo regressões.
+
+---
+
+### M. Transição para Persistência Relacional com SQLite e SQLModel (Maio de 2026)
+- **O Problema**: O sistema dependia de leituras e escritas diretas em arquivos JSON locais (`history.json` e `manual_values.json`), gerando riscos de concorrência, perda de dados e falta de suporte para consultas com ordenação otimizada.
+- **A Solução**:
+  1. **Banco de Dados Relacional**: Implementamos a infraestrutura do banco de dados relacional leve **SQLite** integrado ao ORM **SQLModel** (com SQLAlchemy e Pydantic v2).
+  2. **Isolamento de Credenciais**: Adicionamos suporte à variável de ambiente `DATABASE_URL="sqlite:///./analisador.db"` configurável via `.env` usando `python-dotenv`.
+  3. **Migração Transparente**: Desenvolvemos uma rotina inteligente de startup que migra automaticamente todos os dados existentes nos arquivos JSON legados para as novas tabelas (`audit_records` e `manual_values`) no primeiro boot, garantindo retenção total de dados históricos.
+  4. **Testes em Memória**: Criamos uma suíte de testes de integração dedicados (`test_database.py`) utilizando banco em memória (`sqlite:///:memory:`) para garantir 100% de isolamento e prevenir regressões sem sujar o banco físico de produção local.
 
 ---
 
