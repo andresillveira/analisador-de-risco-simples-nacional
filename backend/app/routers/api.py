@@ -4,8 +4,9 @@ import uuid
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from pypdf import PdfReader
+from sqlmodel import Session, select, delete
 
 from app.config import REPORT_TYPES_INFO, SIMULATION_PROFILES
 from app.models import (
@@ -17,12 +18,7 @@ from app.models import (
     CompareRequest,
     ManualValuesModel
 )
-from app.utils.file_utils import (
-    _load_history,
-    _save_history,
-    _load_manual_values,
-    _save_manual_values
-)
+from app.database import get_db, AuditRecordDb, ManualValuesDb
 from app.services.parser_service import parse_csv_txt, parse_excel, parse_pdf
 from app.services.risk_service import (
     calculate_risk,
@@ -114,34 +110,63 @@ async def reanalyze_file(
 # --- History endpoints ---
 
 @router.get("/history")
-def get_history():
-    return _load_history()
+def get_history(db: Session = Depends(get_db)):
+    records = db.exec(select(AuditRecordDb).order_by(AuditRecordDb.created_at.desc())).all()
+    results = []
+    for r in records:
+        try:
+            results.append({
+                "id": r.id,
+                "timestamp": r.timestamp,
+                "companyName": r.companyName,
+                "period": r.period,
+                "results": json.loads(r.results_json),
+                "files": json.loads(r.files_json)
+            })
+        except Exception:
+            pass
+    return results
 
 @router.post("/history")
-def create_history(record_input: AuditRecordInput):
-    history = _load_history()
-    new_record = {
-        "id": "hist_" + uuid.uuid4().hex[:12],
-        "timestamp": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
-        "companyName": record_input.companyName,
-        "period": record_input.period,
+def create_history(record_input: AuditRecordInput, db: Session = Depends(get_db)):
+    new_id = "hist_" + uuid.uuid4().hex[:12]
+    timestamp_str = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    
+    db_record = AuditRecordDb(
+        id=new_id,
+        timestamp=timestamp_str,
+        companyName=record_input.companyName,
+        period=record_input.period,
+        results_json=json.dumps(record_input.results.model_dump(), ensure_ascii=False),
+        files_json=json.dumps([f.model_dump() for f in record_input.files], ensure_ascii=False),
+        created_at=datetime.now().timestamp()
+    )
+    db.add(db_record)
+    db.commit()
+    db.refresh(db_record)
+    
+    return {
+        "id": db_record.id,
+        "timestamp": db_record.timestamp,
+        "companyName": db_record.companyName,
+        "period": db_record.period,
         "results": record_input.results.model_dump(),
         "files": [f.model_dump() for f in record_input.files]
     }
-    history.insert(0, new_record)
-    _save_history(history)
-    return new_record
 
 @router.delete("/history/{audit_id}")
-def delete_history_record(audit_id: str):
-    history = _load_history()
-    history = [r for r in history if r["id"] != audit_id]
-    _save_history(history)
-    return {"deleted": True}
+def delete_history_record(audit_id: str, db: Session = Depends(get_db)):
+    record = db.exec(select(AuditRecordDb).where(AuditRecordDb.id == audit_id)).first()
+    if record:
+        db.delete(record)
+        db.commit()
+        return {"deleted": True}
+    return {"deleted": False}
 
 @router.delete("/history")
-def clear_history():
-    _save_history([])
+def clear_history(db: Session = Depends(get_db)):
+    db.exec(delete(AuditRecordDb))
+    db.commit()
     return {"cleared": True}
 
 # --- Simulation profiles ---
@@ -179,13 +204,29 @@ def get_verdict(results: AnalysisResultsModel):
 # --- Compare audits ---
 
 @router.post("/compare-audits")
-def compare_audits(req: CompareRequest):
-    history = _load_history()
-    rec_a = next((r for r in history if r["id"] == req.audit_id_a), None)
-    rec_b = next((r for r in history if r["id"] == req.audit_id_b), None)
+def compare_audits(req: CompareRequest, db: Session = Depends(get_db)):
+    rec_a_db = db.exec(select(AuditRecordDb).where(AuditRecordDb.id == req.audit_id_a)).first()
+    rec_b_db = db.exec(select(AuditRecordDb).where(AuditRecordDb.id == req.audit_id_b)).first()
 
-    if not rec_a or not rec_b:
+    if not rec_a_db or not rec_b_db:
         raise HTTPException(status_code=404, detail="One or both audit records not found")
+
+    rec_a = {
+        "id": rec_a_db.id,
+        "timestamp": rec_a_db.timestamp,
+        "companyName": rec_a_db.companyName,
+        "period": rec_a_db.period,
+        "results": json.loads(rec_a_db.results_json),
+        "files": json.loads(rec_a_db.files_json)
+    }
+    rec_b = {
+        "id": rec_b_db.id,
+        "timestamp": rec_b_db.timestamp,
+        "companyName": rec_b_db.companyName,
+        "period": rec_b_db.period,
+        "results": json.loads(rec_b_db.results_json),
+        "files": json.loads(rec_b_db.files_json)
+    }
 
     res_a = rec_a["results"]
     res_b = rec_b["results"]
@@ -207,23 +248,37 @@ def compare_audits(req: CompareRequest):
 # --- Manual Values endpoints ---
 
 @router.get("/manual-values")
-def get_manual_values(company: str, period: str):
-    manual_data = _load_manual_values()
+def get_manual_values(company: str, period: str, db: Session = Depends(get_db)):
     key = f"{company.strip().lower()}|||{period.strip().lower()}"
-    if key in manual_data:
-        model = manual_data[key]
+    record = db.exec(select(ManualValuesDb).where(ManualValuesDb.id == key)).first()
+    
+    if record:
+        model = {
+            "companyName": record.companyName,
+            "period": record.period,
+            "vendas": record.vendas,
+            "compras": record.compras,
+            "servicos_prestados": record.servicos_prestados,
+            "servicos_tomados": record.servicos_tomados,
+            "folha_pagamento": record.folha_pagamento,
+            "outras_receitas": record.outras_receitas,
+            "outras_despesas": record.outras_despesas,
+            "devolucoes_vendas": record.devolucoes_vendas,
+            "devolucoes_compras": record.devolucoes_compras,
+            "is_manual": record.is_manual
+        }
         results = calculate_risk_from_values(
-            vendas=model.get("vendas", 0.0),
-            compras=model.get("compras", 0.0),
-            servicos_prestados=model.get("servicos_prestados", 0.0),
-            servicos_tomados=model.get("servicos_tomados", 0.0),
-            folha_pagamento=model.get("folha_pagamento", 0.0),
-            outras_receitas=model.get("outras_receitas", 0.0),
-            outras_despesas=model.get("outras_despesas", 0.0),
-            devolucoes_vendas=model.get("devolucoes_vendas", 0.0),
-            devolucoes_compras=model.get("devolucoes_compras", 0.0)
+            vendas=record.vendas,
+            compras=record.compras,
+            servicos_prestados=record.servicos_prestados,
+            servicos_tomados=record.servicos_tomados,
+            folha_pagamento=record.folha_pagamento,
+            outras_receitas=record.outras_receitas,
+            outras_despesas=record.outras_despesas,
+            devolucoes_vendas=record.devolucoes_vendas,
+            devolucoes_compras=record.devolucoes_compras
         )
-        alerts = generate_alerts([], results, is_manual=model.get("is_manual", False))
+        alerts = generate_alerts([], results, is_manual=record.is_manual)
         return {
             "manualValues": model,
             "results": results,
@@ -253,12 +308,31 @@ def get_manual_values(company: str, period: str):
     }
 
 @router.post("/manual-values")
-def save_manual_values(model: ManualValuesModel):
-    manual_data = _load_manual_values()
+def save_manual_values(model: ManualValuesModel, db: Session = Depends(get_db)):
     key = f"{model.companyName.strip().lower()}|||{model.period.strip().lower()}"
     
-    manual_data[key] = model.model_dump()
-    _save_manual_values(manual_data)
+    record = db.exec(select(ManualValuesDb).where(ManualValuesDb.id == key)).first()
+    if not record:
+        record = ManualValuesDb(
+            id=key,
+            companyName=model.companyName,
+            period=model.period
+        )
+        
+    record.vendas = model.vendas
+    record.compras = model.compras
+    record.servicos_prestados = model.servicos_prestados
+    record.servicos_tomados = model.servicos_tomados
+    record.folha_pagamento = model.folha_pagamento
+    record.outras_receitas = model.outras_receitas
+    record.outras_despesas = model.outras_despesas
+    record.devolucoes_vendas = model.devolucoes_vendas
+    record.devolucoes_compras = model.devolucoes_compras
+    record.is_manual = model.is_manual
+    
+    db.add(record)
+    db.commit()
+    db.refresh(record)
     
     results = calculate_risk_from_values(
         vendas=model.vendas,
@@ -280,12 +354,12 @@ def save_manual_values(model: ManualValuesModel):
     }
 
 @router.delete("/manual-values")
-def delete_manual_values(company: str, period: str):
-    manual_data = _load_manual_values()
+def delete_manual_values(company: str, period: str, db: Session = Depends(get_db)):
     key = f"{company.strip().lower()}|||{period.strip().lower()}"
-    if key in manual_data:
-        del manual_data[key]
-        _save_manual_values(manual_data)
+    record = db.exec(select(ManualValuesDb).where(ManualValuesDb.id == key)).first()
+    if record:
+        db.delete(record)
+        db.commit()
         return {"deleted": True}
     return {"deleted": False}
 

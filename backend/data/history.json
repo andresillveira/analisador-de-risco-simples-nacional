@@ -1,5 +1,99 @@
 [
   {
+    "id": "hist_a674724f2655",
+    "timestamp": "28/05/2026 09:08:48",
+    "companyName": "DISK SALGADOS MANAH LTDA",
+    "period": "1º TRIMESTRE DE 2026",
+    "results": {
+      "faturamento": 745268.4,
+      "vendasContabilizadas": 745268.4,
+      "devolucoesVendas": 0.0,
+      "vendasLiquidas": 745268.4,
+      "servicosCfopContabilizados": 0.0,
+      "comprasContabilizadas": 151872.22,
+      "devolucoesCompras": 0.0,
+      "comprasLiquidas": 151872.22,
+      "despesasContabilizadas": 452177.58,
+      "folhaPagamentoContabilizada": 220676.81,
+      "outrasDespesasContabilizadas": 79628.55,
+      "outrasReceitasContabilizadas": 0.0,
+      "comprasPercentage": 20.38,
+      "despesasPercentage": 60.67,
+      "incisoXExceeded": false,
+      "incisoIXExceeded": false,
+      "hasFolha": true,
+      "hasCompras": true,
+      "hasVendas": true,
+      "hasServicos": false,
+      "statusX": "Regular",
+      "statusIX": "Regular",
+      "textVerdictX": "Regularidade Fiscal Sob o Art. 29. As compras de mercadorias representam 20.38% do faturamento tributável. Operação dentro do limite prudencial (80%).",
+      "textVerdictIX": "Regularidade Fiscal Sob o Art. 29. Despesas totais representam 60.67% do faturamento total. Limite de 120% respeitado."
+    },
+    "files": [
+      {
+        "id": "file-1779969811923-1tmo8ssyu",
+        "name": "Disk Salgados Manah - Compra e Venda - Q1-2026.pdf",
+        "size": 2667,
+        "type": "Vendas",
+        "content": "DOCUMENTO PDF PARSADO: 19 linhas.",
+        "rowCount": 19,
+        "detectedTotal": 1017040.44,
+        "processedByBackend": true,
+        "isTypeManuallySelected": false,
+        "breakdown": {
+          "compras": 151872.22,
+          "vendas": 745268.4,
+          "servicos": 0.0,
+          "outras": 63329.92,
+          "folha": 0.0,
+          "devolucoes_entrada": 0.0,
+          "devolucoes_saida": 0.0
+        }
+      },
+      {
+        "id": "file-1779969811923-bqs2hmfpp",
+        "name": "Disk Salgados Manah - Folha - Q1-2026.pdf",
+        "size": 7156,
+        "type": "Folha de Pagamento",
+        "content": "DOCUMENTO PDF PARSADO: 0 linhas.",
+        "rowCount": 0,
+        "detectedTotal": 220676.81,
+        "processedByBackend": true,
+        "isTypeManuallySelected": false,
+        "breakdown": {
+          "compras": 0.0,
+          "vendas": 0.0,
+          "servicos": 0.0,
+          "outras": 0.0,
+          "folha": 220676.81,
+          "devolucoes_entrada": 0.0,
+          "devolucoes_saida": 0.0
+        }
+      },
+      {
+        "id": "file-1779969811924-elpio243n",
+        "name": "Disk Salgados Manah - Serviços - Q1-2026.pdf",
+        "size": 1547,
+        "type": "Compras",
+        "content": "DOCUMENTO PDF PARSADO: 1 linhas.",
+        "rowCount": 1,
+        "detectedTotal": 16298.63,
+        "processedByBackend": true,
+        "isTypeManuallySelected": false,
+        "breakdown": {
+          "compras": 0.0,
+          "vendas": 0.0,
+          "servicos": 0.0,
+          "outras": 16298.63,
+          "folha": 0.0,
+          "devolucoes_entrada": 0.0,
+          "devolucoes_saida": 0.0
+        }
+      }
+    ]
+  },
+  {
     "id": "hist_31358d17bca4",
     "timestamp": "28/05/2026 08:39:13",
     "companyName": "DANIELA COUTO MATERIAIS DE CONSTRUCAO LTDA - Matriz",

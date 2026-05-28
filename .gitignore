@@ -14,3 +14,9 @@ exemples/
 iniciar.bat
 encerrar.bat
 
+# Banco de dados local SQLite
+*.db
+*.sqlite
+*.sqlite3
+
+

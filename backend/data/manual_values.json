@@ -298,5 +298,19 @@
     "outras_receitas": 100.0,
     "outras_despesas": 0.0,
     "is_manual": true
+  },
+  "nova empresa s/a|||1º trimestre de 2026": {
+    "companyName": "Nova Empresa S/A",
+    "period": "1º TRIMESTRE DE 2026",
+    "vendas": 20000.0,
+    "compras": 10000.0,
+    "servicos_prestados": 5000.0,
+    "servicos_tomados": 800.0,
+    "folha_pagamento": 8000.0,
+    "outras_receitas": 0.0,
+    "outras_despesas": 3500.0,
+    "devolucoes_vendas": 100.0,
+    "devolucoes_compras": 500.0,
+    "is_manual": true
   }
 }
