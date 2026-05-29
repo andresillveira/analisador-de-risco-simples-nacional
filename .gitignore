@@ -19,4 +19,9 @@ encerrar.bat
 *.sqlite
 *.sqlite3
 
+# Cache do Python
+__pycache__/
+*.pyc
+
+
 

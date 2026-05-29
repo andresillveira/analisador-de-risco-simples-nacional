@@ -63,7 +63,7 @@ export default function PrintReport({
     
     if (hasRisk) {
       return {
-        label: "EM RISCO DE EXCLUSÃO",
+        label: "EM RISCO DE EXCLUSÃO DO SIMPLES NACIONAL",
         sub: "Presunção legal de irregularidade sob o Art. 29 da LC 123/06",
         colorClass: "bg-red-50 text-red-800 border-red-300"
       };
@@ -161,7 +161,7 @@ export default function PrintReport({
             </div>
 
             {/* Executive Status Indicator Panel */}
-            <div className={`mt-4 border-2 p-5 rounded-2xl mb-8 flex flex-col sm:flex-row items-center sm:items-start gap-4 ${verdict.colorClass}`}>
+            <div className={`mt-4 border-2 p-5 print:py-4 print:px-5 rounded-2xl mb-8 flex flex-col sm:flex-row print:flex-row items-center sm:items-start print:items-start gap-4 ${verdict.colorClass}`}>
               <div className="mt-1">
                 {(analyzeScenario1 && results.statusX === "Risco") || (analyzeScenario2 && results.statusIX === "Risco") ? (
                   <AlertTriangle className="w-10 h-10 text-red-600" />
@@ -171,11 +171,11 @@ export default function PrintReport({
                   <CheckCircle2 className="w-10 h-10 text-emerald-600" />
                 )}
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <span className="text-[10px] uppercase font-bold tracking-wider">
                   STATUS GERAL DE ENQUADRAMENTO FISCAL
                 </span>
-                <h3 className="text-lg font-extrabold tracking-tight mt-0.5">
+                <h3 className="text-lg font-extrabold tracking-tight mt-0.5 whitespace-nowrap print:text-[15px] sm:text-lg overflow-hidden text-ellipsis">
                   {verdict.label}
                 </h3>
                 <p className="text-xs text-slate-600 mt-1">
@@ -275,7 +275,7 @@ export default function PrintReport({
             </div>
 
             {/* Test Framework Evaluations Art 29 */}
-            <div className={`grid gap-6 mb-6 ${analyzeScenario1 && analyzeScenario2 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
+            <div className={`grid gap-6 mb-6 ${analyzeScenario1 && analyzeScenario2 ? "grid-cols-1 md:grid-cols-2 print:grid-cols-2" : "grid-cols-1"}`}>
               
               {analyzeScenario1 && (
                 <div className="p-4 rounded-xl border border-slate-200">
